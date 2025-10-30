@@ -93,7 +93,7 @@ if is_admin:
         })
         save_data(data)
         st.success("Mise à jour appliquée")
-        st._rerun()
+        st.rerun()
 
     st.write("⚠️ Rappel : les visiteurs peuvent voir l'historique mais ne peuvent pas modifier la progression.")
     # Optionnel : bouton "remise à zéro"
