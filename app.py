@@ -6,7 +6,7 @@ from datetime import datetime
 # --- CONFIG ---
 # Par sécurité, on lit le token admin depuis la variable d'environnement ADMIN_TOKEN si elle existe.
 # Sinon, on utilise la valeur par défaut ci-dessous (change-la avant de déployer).
-DEFAULT_ADMIN_TOKEN = "mon_token_secret_a_changer"
+DEFAULT_ADMIN_TOKEN = "mathisfusee"
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", DEFAULT_ADMIN_TOKEN)
 
 DATA_FILE = "progress.json"
