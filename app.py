@@ -93,7 +93,7 @@ if is_admin:
         })
         save_data(data)
         st.success("Mise à jour appliquée")
-        st.experimental_rerun()
+        st._rerun()
 
     st.write("⚠️ Rappel : les visiteurs peuvent voir l'historique mais ne peuvent pas modifier la progression.")
     # Optionnel : bouton "remise à zéro"
@@ -103,7 +103,7 @@ if is_admin:
                                 "action": "Réinitialisation", "valeur": 0, "raison": "Reset admin"})
         save_data(data)
         st.success("Remis à zéro")
-        st.experimental_rerun()
+        st.rerun()
 
 # --- footer rapide ---
 st.markdown("<hr>", unsafe_allow_html=True)
