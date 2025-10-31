@@ -128,11 +128,18 @@ if not df.empty:
         on="time",
         direction="backward"
     )
+
+    # Si la première altitude est NaN → on lui met la première valeur connue
+    first_alt = df["altitude"].iloc[0]
+    df_interp["altitude"] = df_interp["altitude"].fillna(first_alt)
+
+    # Interpolation linéaire et bornes
     df_interp["altitude"] = df_interp["altitude"].interpolate(method="linear")
     df_interp["altitude"] = df_interp["altitude"].clip(lower=0)
 
     # 🔥 Ajuste la courbe pour que le dernier point atteigne bien la valeur réelle
-    scale = progress / df_interp["altitude"].iloc[-1] if df_interp["altitude"].iloc[-1] != 0 else 1
+    last_val = df_interp["altitude"].iloc[-1]
+    scale = progress / last_val if last_val != 0 else 1
     df_interp["altitude"] = df_interp["altitude"] * scale
 
     # Animation : la fusée avance sur la courbe réelle jusqu’à aujourd’hui
@@ -163,6 +170,7 @@ if not df.empty:
         time.sleep(0.05)
 else:
     st.warning("Aucune trajectoire à afficher 🚀")
+
 
 
 
