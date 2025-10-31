@@ -17,10 +17,16 @@ ADMIN_TOKEN = "monmotdepasse2025"  # <-- ton token admin ici
 # --- Connexion Google Sheets ---
 def get_sheet():
     creds_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
-    creds = Credentials.from_service_account_info(creds_dict)
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file"
+    ]
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
     client = gspread.authorize(creds)
     sheet = client.open_by_key(st.secrets["SHEET_ID"]).sheet1
     return sheet
+
 
 def load_data():
     sheet = get_sheet()
