@@ -115,17 +115,55 @@ def afficher_graphique(altitude_actuelle):
 
     return (base + karman_line + karman_label + rocket).properties(width=800, height=400)
 
-# --- ANIMATION ---
+# --- ANIMATION TEMPORELLE ---
 graph_placeholder = st.empty()
-n_steps = 60
+
 if not df.empty:
-    for i in range(n_steps + 1):
-        ratio = i / n_steps
-        alt_now = fus_alt * ratio
-        graph_placeholder.altair_chart(afficher_graphique(alt_now), use_container_width=True)
-        time.sleep(0.03)
+    # Recrée un axe temporel complet (du 1er sept à aujourd’hui)
+    full_time = pd.date_range(start=start, end=today, freq="D")
+    df_full = pd.DataFrame({"time": full_time})
+    df_interp = pd.merge_asof(
+        df_full.sort_values("time"),
+        df[["time", "altitude"]].sort_values("time"),
+        on="time",
+        direction="backward"
+    )
+    df_interp["altitude"] = df_interp["altitude"].interpolate(method="linear")
+    df_interp["altitude"] = df_interp["altitude"].clip(lower=0)
+
+    # Animation : la fusée avance sur la courbe réelle
+    # Ajuste la courbe pour que le dernier point atteigne bien 'progress'
+scale = progress / df_interp["altitude"].iloc[-1] if df_interp["altitude"].iloc[-1] != 0 else 1
+df_interp["altitude"] = df_interp["altitude"] * scale
+
+    for i in range(len(df_interp)):
+        alt_now = df_interp["altitude"].iloc[i]
+        t_now = df_interp["time"].iloc[i]
+        sub_df = df_interp.iloc[:i+1]
+
+        base = alt.Chart(sub_df).mark_line(color="#00bfff", strokeWidth=3).encode(
+            x=alt.X("time:T", title="Temps (année scolaire)", scale=alt.Scale(domain=[start, end])),
+            y=alt.Y("altitude:Q", title="Altitude (%)", scale=alt.Scale(domain=[0, 150]))
+        )
+
+        karman_line = alt.Chart(pd.DataFrame({"y": [100]})).mark_rule(
+            color="red", strokeDash=[6, 4], strokeWidth=2
+        ).encode(y="y")
+
+        karman_label = alt.Chart(pd.DataFrame({"y": [100], "x": [start]})).mark_text(
+            align="left", dx=10, color="red", fontWeight="bold"
+        ).encode(x="x", y="y", text=alt.value("Ligne de Kármán (100 %)"))
+
+        rocket = alt.Chart(pd.DataFrame({"x": [t_now], "y": [alt_now]})).mark_text(
+            text="🚀", size=30
+        ).encode(x="x", y="y")
+
+        chart = (base + karman_line + karman_label + rocket).properties(width=800, height=400)
+        graph_placeholder.altair_chart(chart, use_container_width=True)
+        time.sleep(0.05)
 else:
     st.warning("Aucune trajectoire à afficher 🚀")
+
 
 # --- HISTORIQUE ---
 st.subheader("📜 Historique des actions")
