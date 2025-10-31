@@ -5,7 +5,7 @@ from google.oauth2.service_account import Credentials
 
 # --- CONFIG ---
 st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="centered")
-ADMIN_TOKEN = "monmotdepasse2025"  # <-- Ton mot de passe admin ici
+ADMIN_TOKEN = "monmotdepasse2025"  # mot de passe admin
 
 # --- Connexion Google Sheets ---
 def get_sheet():
@@ -33,7 +33,7 @@ def load_data():
             }
         else:
             return {"progress": 0, "history": []}
-    except Exception as e:
+    except Exception:
         st.error("Erreur connexion Google Sheets.")
         return {"progress": 0, "history": []}
 
@@ -48,71 +48,102 @@ def save_data(data):
         st.error("Impossible d'enregistrer sur Google Sheets.")
 
 
-# --- Données principales ---
+# --- Données ---
 data = load_data()
 progress = data["progress"]
 history = data["history"]
 
 # --- TITRE ---
-st.title("🚀 Fusée vers la tablette !")
-
+st.title("🚀 Fusée vers la tablette")
 st.markdown(f"### Progression actuelle : **{progress}%**")
 
-# --- Animation de la fusée ---
+# --- Animation / Affichage visuel ---
 animation_html = f"""
 <style>
-@keyframes rise {{
-  from {{ bottom: 0; }}
-  to {{ bottom: {progress * 3}px; }}
-}}
-
-@keyframes smoke {{
-  0% {{ opacity: 1; transform: scale(1); }}
-  100% {{ opacity: 0; transform: scale(3); }}
-}}
-
-.launchpad {{
+.space-container {{
   position: relative;
-  width: 200px;
-  height: 600px;
-  margin: auto;
-  background: linear-gradient(to top, #001020 0%, #003366 100%);
-  border-radius: 30px;
+  width: 800px;
+  height: 300px;
+  margin: 30px auto;
+  background: linear-gradient(to right, #001020, #003366);
+  border-radius: 20px;
   overflow: hidden;
-  box-shadow: inset 0 0 15px rgba(255,255,255,0.2);
+  box-shadow: inset 0 0 20px rgba(255,255,255,0.15);
 }}
 
 .rocket {{
   position: absolute;
-  bottom: 0;
-  left: 35%;
+  bottom: 40%;
+  left: calc({min(progress,150)}% * 0.7);
+  transform: translateX(-50%);
   font-size: 64px;
-  animation: rise 3s ease-out forwards;
+  animation: fly 2.5s ease-out forwards;
 }}
 
-.smoke {{
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.4);
-  animation: smoke 2s infinite;
+@keyframes fly {{
+  from {{ left: 0%; }}
+  to {{ left: calc({min(progress,150)}% * 0.7); }}
 }}
 
-.target {{
+.scale {{
   position: absolute;
-  top: {max(550 - progress * 3, 30)}px;
-  left: 45%;
-  font-size: 30px;
+  bottom: 10%;
+  left: 5%;
+  width: 90%;
+  height: 6px;
+  background: linear-gradient(to right, #555, #aaa);
+  border-radius: 3px;
+}}
+
+.tick {{
+  position: absolute;
+  bottom: 5%;
+  width: 2px;
+  height: 15px;
+  background: #fff;
+}}
+
+.label {{
+  position: absolute;
+  bottom: 0%;
+  font-size: 12px;
+  color: #fff;
+  transform: translateX(-50%);
+}}
+
+.karman {{
+  position: absolute;
+  bottom: 10%;
+  left: 70%;
+  width: 2px;
+  height: 80%;
+  background: repeating-linear-gradient(
+    to bottom,
+    #ff5555,
+    #ff5555 5px,
+    transparent 5px,
+    transparent 10px
+  );
+}}
+
+.karman-label {{
+  position: absolute;
+  top: 5%;
+  left: 70%;
+  color: #ff9999;
+  font-weight: bold;
+  transform: translateX(-50%);
+  font-size: 14px;
 }}
 </style>
 
-<div class="launchpad">
-  <div class="smoke"></div>
+<div class="space-container">
   <div class="rocket">🚀</div>
-  <div class="target">🎯</div>
+  <div class="karman"></div>
+  <div class="karman-label">Kármán line (100%)</div>
+  <div class="scale">
+    {"".join([f'<div class="tick" style="left:{i}%"></div><div class="label" style="left:{i}%">{i}</div>' for i in range(0, 110, 10)])}
+  </div>
 </div>
 
 <audio autoplay>
@@ -124,14 +155,13 @@ st.markdown(animation_html, unsafe_allow_html=True)
 # --- Historique ---
 st.subheader("Historique des actions")
 if not history:
-    st.info("Aucune action enregistrée pour l’instant 🚀")
+    st.info("Aucune action enregistrée 🚀")
 else:
     for h in history[:10]:
         action = h.get("action", "?")
         delta = h.get("delta", h.get("value", 0))
         reason = h.get("reason", "")
         st.write(f"🕓 {h.get('time', '?')} — **{action} de {delta}%** : {reason}")
-
 
 # --- Panneau admin ---
 st.sidebar.header("🔑 Mode administrateur")
@@ -163,6 +193,6 @@ if admin_input == ADMIN_TOKEN:
             save_data({"progress": progress, "history": history})
             st.success(f"✅ Mise à jour : {action} de {delta}%")
             st.rerun()
-
 else:
     st.sidebar.warning("Mode lecture seule 👀")
+
