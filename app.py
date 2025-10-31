@@ -114,6 +114,33 @@ def afficher_graphique(altitude_actuelle):
     })).mark_text(text="🚀", size=30).encode(x="x", y="y")
 
     return (base + karman_line + karman_label + rocket).properties(width=800, height=400)
+import json
+
+# --- CHARGEMENT DU JSON ---
+# Lecture du contenu brut depuis Google Sheets
+history_raw = data[1] if isinstance(data, list) and len(data) > 1 else "[]"
+
+try:
+    history = json.loads(history_raw)
+except json.JSONDecodeError:
+    history = []
+
+# Conversion en DataFrame
+if history:
+    df = pd.DataFrame(history)
+else:
+    df = pd.DataFrame(columns=["time", "action", "delta", "reason"])
+
+# Normalisation de la colonne "time"
+if "time" in df.columns:
+    df["time"] = pd.to_datetime(df["time"], format="%d/%m %H:%M", errors="coerce")
+    # On ajoute l'année scolaire en fonction du mois
+    df["time"] = df["time"].apply(
+        lambda d: d.replace(year=start.year if d.month >= 9 else start.year + 1)
+        if pd.notnull(d) else pd.NaT
+    )
+else:
+    st.warning("Aucune donnée d'historique trouvée dans la feuille.")
 
 # --- CALCUL CUMULÉ DE L'ALTITUDE ---
 if not df.empty:
