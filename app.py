@@ -3,6 +3,13 @@ import json, time
 import gspread
 from google.oauth2.service_account import Credentials
 
+try:
+    creds_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
+    st.success("✅ JSON Google valide !")
+except Exception as e:
+    st.error(f"❌ Erreur parsing JSON : {e}")
+
+
 # --- CONFIG ---
 st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="centered")
 ADMIN_TOKEN = "monmotdepasse2025"  # <-- ton token admin ici
