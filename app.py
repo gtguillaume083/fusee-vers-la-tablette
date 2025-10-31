@@ -1,170 +1,141 @@
 import streamlit as st
-import json
-import gspread
 import pandas as pd
+import json
 import datetime
 import time
-import plotly.graph_objects as go
+import gspread
 from google.oauth2.service_account import Credentials
+import plotly.graph_objects as go
 
+# --- Configuration de la page ---
 st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="wide")
+st.title("🚀 Fusée vers la tablette — Progression annuelle")
 
-# --- Connexion Google Sheets ---
+# --- Connexion à Google Sheets ---
 def get_sheet():
     creds_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
-    creds = Credentials.from_service_account_info(
-        creds_dict,
-        scopes=[
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ]
-    )
+    creds = Credentials.from_service_account_info(creds_dict, scopes=["https://www.googleapis.com/auth/spreadsheets"])
     client = gspread.authorize(creds)
     sheet = client.open_by_key(st.secrets["SHEET_ID"]).sheet1
     return sheet
-
 
 def load_data():
     try:
         sheet = get_sheet()
         records = sheet.get_all_records()
-        if not records:
+        if records and len(records) > 0:
+            r = records[0]
+            progress = int(r.get("progress", 0))
+            history = json.loads(r.get("history", "[]"))
+            return {"progress": progress, "history": history}
+        else:
             return {"progress": 0, "history": []}
-        r = records[0]
-        progress = int(r.get("progress", 0))
-        history_json = r.get("history", "[]")
-        try:
-            history = json.loads(history_json)
-        except:
-            history = []
-        return {"progress": progress, "history": history}
     except Exception as e:
         st.error(f"Erreur connexion Google Sheets : {e}")
         return {"progress": 0, "history": []}
-
 
 def save_data(data):
     try:
         sheet = get_sheet()
         sheet.clear()
         sheet.append_row(["progress", "history"])
-        sheet.append_row([
-            int(data.get("progress", 0)),
-            json.dumps(data.get("history", []), ensure_ascii=False)
-        ])
+        sheet.append_row([int(data["progress"]), json.dumps(data["history"], ensure_ascii=False)])
     except Exception as e:
-        st.error(f"Impossible d'enregistrer sur Google Sheets : {e}")
+        st.error(f"Erreur enregistrement Google Sheets : {e}")
 
-
-# --- Charger les données ---
+# --- Chargement des données ---
 data = load_data()
 progress = data["progress"]
 history = data["history"]
 
-st.title("🚀 Fusée vers la tablette — Progression annuelle")
-
-# --- Interface Admin ---
+# --- Interface admin / lecture seule ---
 admin_mode = False
-if "admin" not in st.session_state:
-    st.session_state.admin = False
-
-with st.expander("🔐 Mode administrateur", expanded=False):
-    token_input = st.text_input("Entre le token administrateur :", type="password")
-    if st.button("Activer le mode admin"):
-        if token_input == st.secrets["ADMIN_TOKEN"]:
-            st.session_state.admin = True
-            st.success("Mode admin activé ✅")
-        else:
-            st.error("Token invalide ❌")
-
-admin_mode = st.session_state.admin
-
-# --- Section principale ---
-st.subheader("Altitude actuelle :")
-st.metric(label="Progression", value=f"{progress} %")
+with st.sidebar:
+    st.subheader("🔑 Mode administrateur")
+    token = st.text_input("Token admin", type="password")
+    if token == st.secrets["ADMIN_TOKEN"]:
+        admin_mode = True
+        st.success("Mode admin activé ✅")
+    else:
+        st.info("Mode lecture seule 👀")
 
 # --- Actions admin ---
 if admin_mode:
-    st.markdown("### ⚙️ Modifier la progression")
-    col1, col2 = st.columns(2)
-    with col1:
-        up = st.number_input("⬆️ Augmenter de :", min_value=0, max_value=100, value=0, step=1)
-    with col2:
-        down = st.number_input("⬇️ Diminuer de :", min_value=0, max_value=100, value=0, step=1)
-
-    reason = st.text_input("Motif de la modification :")
-    if st.button("💾 Enregistrer la modification"):
+    st.sidebar.markdown("### ✏️ Modifier la progression")
+    action = st.sidebar.selectbox("Action", ["up", "down"])
+    delta = st.sidebar.number_input("Δ %", min_value=1, max_value=50, step=1)
+    reason = st.sidebar.text_input("Motif", "")
+    if st.sidebar.button("Valider"):
         now = datetime.datetime.now().strftime("%d/%m %H:%M")
-        delta = up - down
-        if delta != 0:
-            progress = max(0, progress + delta)
-            history.insert(0, {
-                "time": now,
-                "action": "up" if delta > 0 else "down",
-                "delta": abs(delta),
-                "reason": reason if reason else "(non précisé)"
-            })
-            data = {"progress": progress, "history": history}
-            save_data(data)
-            st.success("Progression mise à jour ✅")
-            st.rerun()
+        history.append({
+            "time": now,
+            "action": action,
+            "delta": delta,
+            "reason": reason if reason else "(non précisé)"
+        })
+        if action == "up":
+            progress += delta
         else:
-            st.info("Aucun changement détecté.")
+            progress = max(0, progress - delta)
+        data = {"progress": progress, "history": history}
+        save_data(data)
+        st.sidebar.success("Mise à jour enregistrée ✅")
+        st.experimental_rerun()
 
-# --- Historique ---
-st.markdown("## 📜 Historique des actions")
-if history:
-    for h in history:
-        st.write(f"🕓 {h['time']} — **{h['action']} de {h['delta']}%** : {h['reason']}")
+# --- Historique en DataFrame ---
+if len(history) == 0:
+    st.warning("Aucune trajectoire à afficher 🚀")
 else:
-    st.info("Aucune action enregistrée.")
-
-# --- Graphique de progression dans le temps ---
-if history:
     df = pd.DataFrame(history)
-    df["delta"] = df["delta"].astype(int)
-    df["time"] = pd.to_datetime(df["time"], format="%d/%m %H:%M", errors="coerce")
-    df = df.dropna(subset=["time"])
-    df = df.sort_values("time")
+    df["date"] = pd.to_datetime(df["time"], format="%d/%m %H:%M", errors="coerce")
+    df = df.sort_values("date")
 
-    # Calcul de la progression cumulée dans le temps
-    altitude = []
-    total = 0
+    # --- Altitude cumulée ---
+    altitude = 0
+    altitudes = []
     for _, row in df.iterrows():
-        total += row["delta"] if row["action"] == "up" else -row["delta"]
-        altitude.append(max(0, total))
-    df["altitude"] = altitude
+        if row["action"] == "up":
+            altitude += row["delta"]
+        elif row["action"] == "down":
+            altitude -= row["delta"]
+        altitude = max(0, altitude)
+        altitudes.append(altitude)
+    df["altitude"] = altitudes
 
-    # Étendre la courbe jusqu'à aujourd'hui
-    today = datetime.datetime.now()
-    start_date = datetime.datetime(today.year, 9, 1)
-    end_date = datetime.datetime(today.year + (1 if today.month > 6 else 0), 6, 30)
-    df_interp = pd.DataFrame({"date": pd.date_range(start=start_date, end=end_date, freq="D")})
-    df_interp = pd.merge_asof(df_interp.sort_values("date"),
-                              df.sort_values("time").rename(columns={"time": "date"}),
-                              on="date", direction="forward")
+    # --- Interpolation sur l'année scolaire ---
+    start_date = datetime.datetime(datetime.datetime.now().year, 9, 1)
+    end_date = datetime.datetime(datetime.datetime.now().year + 1, 6, 30)
+    full_dates = pd.date_range(start=start_date, end=end_date, freq="D")
+    df_interp = pd.DataFrame({"date": full_dates})
+    df_interp = pd.merge_asof(df_interp, df[["date", "altitude"]], on="date", direction="forward")
     df_interp["altitude"].fillna(method="ffill", inplace=True)
     df_interp["altitude"].fillna(0, inplace=True)
 
-    fus_alt = df_interp["altitude"].iloc[-1]
+    # --- Position actuelle de la fusée ---
+    today = datetime.datetime.now()
+    fus_index = df_interp["date"].searchsorted(today)
+    fus_index = min(fus_index, len(df_interp) - 1)
+    fus_alt = df_interp["altitude"].iloc[fus_index]
+    fus_date = df_interp["date"].iloc[fus_index]
 
+    # --- Graphique Plotly ---
     fig = go.Figure()
+
+    # Courbe de progression
     fig.add_trace(go.Scatter(
-        x=df_interp["date"],
-        y=df_interp["altitude"],
+        x=df_interp["date"], y=df_interp["altitude"],
         mode="lines",
         line=dict(color="skyblue", width=4),
         name="Progression"
     ))
 
-    # Ligne de Karman (100%)
-    fig.add_hline(y=100, line=dict(color="red", dash="dot"), name="Ligne de Karman")
-    fig.add_annotation(xref="paper", x=1.01, y=100, text="🌌 Ligne de Karman (100%)", showarrow=False, font=dict(size=12, color="red"))
+    # Ligne de Kármán (100 %)
+    fig.add_hline(y=100, line_dash="dot", line_color="red",
+                  annotation_text="Ligne de Kármán (100%)", annotation_position="right")
 
-    # Fusée (position actuelle)
+    # Fusée (emoji)
     fig.add_trace(go.Scatter(
-        x=[df_interp["date"].iloc[-1]],
-        y=[fus_alt],
+        x=[fus_date], y=[fus_alt],
         mode="markers+text",
         marker=dict(size=30, symbol="star", color="orange"),
         text=["🚀"],
@@ -176,12 +147,24 @@ if history:
         title="Trajectoire de la fusée",
         xaxis_title="Temps (du 1er septembre au 30 juin)",
         yaxis_title="Altitude (%)",
-        yaxis=dict(range=[0, max(110, fus_alt + 10)]),
-        width=900,
-        height=500,
-        template="plotly_white"
+        yaxis_range=[0, max(110, df_interp["altitude"].max() + 10)],
+        template="plotly_dark",
+        height=500
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    # --- Animation fluide ---
+    placeholder = st.empty()
+    for i in range(1, fus_index + 1):
+        temp_fig = fig
+        temp_fig.data[0].x = df_interp["date"][:i]
+        temp_fig.data[0].y = df_interp["altitude"][:i]
+        placeholder.plotly_chart(temp_fig, use_container_width=True)
+        time.sleep(0.01)
+
+# --- Historique lisible ---
+st.subheader("📜 Historique des actions")
+if len(history) == 0:
+    st.write("Aucune action enregistrée.")
 else:
-    st.info("Aucune trajectoire à afficher 🚀")
+    for h in reversed(history):
+        st.write(f"🕓 {h['time']} — **{h['action']} {h['delta']} %** : {h['reason']}")
