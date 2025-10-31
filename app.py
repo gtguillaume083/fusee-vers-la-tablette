@@ -115,6 +115,20 @@ def afficher_graphique(altitude_actuelle):
 
     return (base + karman_line + karman_label + rocket).properties(width=800, height=400)
 
+# --- CALCUL CUMULÉ DE L'ALTITUDE ---
+if not df.empty:
+    # On convertit les variations "delta" en altitude cumulée dans le temps
+    altitude = 0
+    cumulative = []
+    for _, row in df.iterrows():
+        if row["action"] == "up":
+            altitude += row["delta"]
+        elif row["action"] == "down":
+            altitude -= row["delta"]
+        cumulative.append(altitude)
+    df["altitude"] = cumulative
+
+
 # --- ANIMATION TEMPORELLE ---
 graph_placeholder = st.empty()
 
