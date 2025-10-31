@@ -166,7 +166,7 @@ if history:
         x=[df_interp["date"].iloc[-1]],
         y=[fus_alt],
         mode="markers+text",
-        marker=dict(size=30, symbol="rocket", color="orange"),
+        marker=dict(size=30, symbol="star", color="orange"),
         text=["🚀"],
         textposition="top center",
         name="Fusée"
