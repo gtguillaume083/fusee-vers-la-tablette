@@ -123,11 +123,24 @@ else:
 if history:
     df = pd.DataFrame(history)
     df["delta"] = df["delta"].astype(int)
-    df["time"] = pd.to_datetime(df["time"], format="%d/%m %H:%M", errors="coerce")
+
+    # 🔧 Corriger le parsing des dates sans année
+    def parse_school_date(date_str):
+        try:
+            # Exemple : "01/09 08:00"
+            d = datetime.datetime.strptime(date_str, "%d/%m %H:%M")
+            today = datetime.datetime.now()
+            # Si on est avant juillet → année scolaire en cours
+            school_year = today.year if d.month >= 9 else today.year - 1
+            return d.replace(year=school_year)
+        except Exception:
+            return pd.NaT
+
+    df["time"] = df["time"].apply(parse_school_date)
     df = df.dropna(subset=["time"])
     df = df.sort_values("time")
 
-    # Calcul de la progression cumulée dans le temps
+    # 🧮 Calcul de la progression cumulée dans le temps
     altitude = []
     total = 0
     for _, row in df.iterrows():
@@ -135,20 +148,27 @@ if history:
         altitude.append(max(0, total))
     df["altitude"] = altitude
 
-    # Étendre la courbe jusqu'à aujourd'hui
+    # 📆 Étendre la courbe sur l'année scolaire
     today = datetime.datetime.now()
-    start_date = datetime.datetime(today.year, 9, 1)
-    end_date = datetime.datetime(today.year + (1 if today.month > 6 else 0), 6, 30)
+    start_date = datetime.datetime(today.year if today.month >= 9 else today.year - 1, 9, 1)
+    end_date = datetime.datetime(start_date.year + 1, 6, 30)
+
     df_interp = pd.DataFrame({"date": pd.date_range(start=start_date, end=end_date, freq="D")})
-    df_interp = pd.merge_asof(df_interp.sort_values("date"),
-                              df.sort_values("time").rename(columns={"time": "date"}),
-                              on="date", direction="forward")
+    df_interp = pd.merge_asof(
+        df_interp.sort_values("date"),
+        df.sort_values("time").rename(columns={"time": "date"}),
+        on="date",
+        direction="forward"
+    )
+
     df_interp["altitude"].fillna(method="ffill", inplace=True)
     df_interp["altitude"].fillna(0, inplace=True)
 
     fus_alt = df_interp["altitude"].iloc[-1]
 
+    # 📈 Création du graphique
     fig = go.Figure()
+
     fig.add_trace(go.Scatter(
         x=df_interp["date"],
         y=df_interp["altitude"],
@@ -157,11 +177,20 @@ if history:
         name="Progression"
     ))
 
-    # Ligne de Karman (100%)
-    fig.add_hline(y=100, line=dict(color="red", dash="dot"), name="Ligne de Karman")
-    fig.add_annotation(xref="paper", x=1.01, y=100, text="🌌 Ligne de Karman (100%)", showarrow=False, font=dict(size=12, color="red"))
+    # 🌌 Ligne de Karman (100%)
+    fig.add_hline(
+        y=100,
+        line=dict(color="red", dash="dot"),
+        name="Ligne de Karman"
+    )
+    fig.add_annotation(
+        xref="paper", x=1.01, y=100,
+        text="🌌 Ligne de Karman (100%)",
+        showarrow=False,
+        font=dict(size=12, color="red")
+    )
 
-    # Fusée (position actuelle)
+    # 🚀 Position de la fusée
     fig.add_trace(go.Scatter(
         x=[df_interp["date"].iloc[-1]],
         y=[fus_alt],
@@ -172,6 +201,7 @@ if history:
         name="Fusée"
     ))
 
+    # ✨ Mise en page
     fig.update_layout(
         title="Trajectoire de la fusée",
         xaxis_title="Temps (du 1er septembre au 30 juin)",
@@ -183,5 +213,7 @@ if history:
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
 else:
     st.info("Aucune trajectoire à afficher 🚀")
+
