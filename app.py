@@ -5,7 +5,7 @@ import altair as alt
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --- CONFIGURATION ---
+# --- CONFIGURATION GÉNÉRALE ---
 st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="centered")
 ADMIN_TOKEN = "monmotdepasse2025"
 
@@ -22,7 +22,9 @@ def get_sheet():
     sheet = client.open_by_key(st.secrets["SHEET_ID"]).sheet1
     return sheet
 
+
 def load_data():
+    """Charge les données depuis Google Sheets"""
     try:
         sheet = get_sheet()
         records = sheet.get_all_records()
@@ -37,7 +39,9 @@ def load_data():
         st.error(f"Erreur connexion Google Sheets : {e}")
         return {"progress": 0, "history": []}
 
+
 def save_data(data):
+    """Sauvegarde les données dans Google Sheets"""
     try:
         sheet = get_sheet()
         sheet.clear()
@@ -45,6 +49,7 @@ def save_data(data):
         sheet.append_row([data["progress"], json.dumps(data["history"], ensure_ascii=False)])
     except Exception as e:
         st.error(f"Impossible d'enregistrer sur Google Sheets : {e}")
+
 
 # --- CHARGEMENT DES DONNÉES ---
 data = load_data()
@@ -67,20 +72,24 @@ if history:
 
     df = df.dropna(subset=["time"]).sort_values("time")
 
-    # Calcul cumulatif altitude
-    altitude = 0
-    alts = []
-    for _, row in df.iterrows():
-        if row["action"] == "up":
-            altitude += row["delta"]
-        elif row["action"] == "down":
-            altitude -= row["delta"]
-        alts.append(max(0, altitude))
-    df["altitude"] = alts
-
-    fus_alt = df["altitude"].iloc[-1]
+    # Si après nettoyage, le DF est vide → on crée un point neutre
+    if df.empty:
+        df = pd.DataFrame([{"time": pd.Timestamp(datetime.date.today()), "altitude": 0}])
+        fus_alt = 0
+    else:
+        # Calcul cumulatif altitude
+        altitude = 0
+        alts = []
+        for _, row in df.iterrows():
+            if row["action"] == "up":
+                altitude += row["delta"]
+            elif row["action"] == "down":
+                altitude -= row["delta"]
+            alts.append(max(0, altitude))
+        df["altitude"] = alts
+        fus_alt = df["altitude"].iloc[-1]
 else:
-    df = pd.DataFrame(columns=["time", "altitude"])
+    df = pd.DataFrame([{"time": pd.Timestamp(datetime.date.today()), "altitude": 0}])
     fus_alt = 0
 
 # --- DATES DE L’ANNÉE SCOLAIRE ---
@@ -114,7 +123,7 @@ if not df.empty:
         align="left", dx=10, color="red", fontWeight="bold"
     ).encode(x="x", y="y", text=alt.value("Ligne de Kármán (100 %)"))
 
-    # Position de la fusée
+    # Position de la fusée 🚀
     rocket = alt.Chart(pd.DataFrame({
         "x": [df["time"].iloc[-1]],
         "y": [fus_alt]
