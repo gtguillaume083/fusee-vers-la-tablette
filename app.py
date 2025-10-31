@@ -148,21 +148,26 @@ if history:
         altitude.append(max(0, total))
     df["altitude"] = altitude
 
-    # 📆 Étendre la courbe sur l'année scolaire
+    # 📆 Définir la période de l'année scolaire
     today = datetime.datetime.now()
     start_date = datetime.datetime(today.year if today.month >= 9 else today.year - 1, 9, 1)
     end_date = datetime.datetime(start_date.year + 1, 6, 30)
 
-    df_interp = pd.DataFrame({"date": pd.date_range(start=start_date, end=end_date, freq="D")})
-    df_interp = pd.merge_asof(
-        df_interp.sort_values("date"),
+    # Créer la série complète pour interpolation
+    df_full = pd.DataFrame({"date": pd.date_range(start=start_date, end=end_date, freq="D")})
+    df_full = pd.merge_asof(
+        df_full.sort_values("date"),
         df.sort_values("time").rename(columns={"time": "date"}),
         on="date",
         direction="forward"
     )
 
-    df_interp["altitude"].fillna(method="ffill", inplace=True)
-    df_interp["altitude"].fillna(0, inplace=True)
+    # Compléter les valeurs manquantes
+    df_full["altitude"].fillna(method="ffill", inplace=True)
+    df_full["altitude"].fillna(0, inplace=True)
+
+    # 🎯 Ne garder que jusqu'à aujourd'hui
+    df_interp = df_full[df_full["date"] <= today]
 
     fus_alt = df_interp["altitude"].iloc[-1]
 
@@ -216,4 +221,3 @@ if history:
 
 else:
     st.info("Aucune trajectoire à afficher 🚀")
-
