@@ -8,10 +8,15 @@ from pathlib import Path
 # --- Connexion Google Sheets ---
 def get_sheet():
     creds_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
-    creds = Credentials.from_service_account_info(creds_dict)
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive",
+    ]
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
     client = gspread.authorize(creds)
     sheet = client.open_by_key(st.secrets["SHEET_ID"]).sheet1
     return sheet
+
 
 def load_data():
     try:
