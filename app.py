@@ -162,6 +162,7 @@ if admin_input == ADMIN_TOKEN:
             })
             save_data({"progress": progress, "history": history})
             st.success(f"✅ Mise à jour : {action} de {delta}%")
-            st.experimental_rerun()
+            st.rerun()
+
 else:
     st.sidebar.warning("Mode lecture seule 👀")
