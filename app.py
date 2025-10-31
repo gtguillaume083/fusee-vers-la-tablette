@@ -5,11 +5,11 @@ import altair as alt
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --- CONFIGURATION GÉNÉRALE ---
+# --- CONFIG ---
 st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="centered")
 ADMIN_TOKEN = "monmotdepasse2025"
 
-# --- ACCÈS GOOGLE SHEETS ---
+# --- GOOGLE SHEETS ---
 def get_sheet():
     creds_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
     scopes = [
@@ -22,13 +22,11 @@ def get_sheet():
     sheet = client.open_by_key(st.secrets["SHEET_ID"]).sheet1
     return sheet
 
-
 def load_data():
-    """Charge les données depuis Google Sheets"""
     try:
         sheet = get_sheet()
         records = sheet.get_all_records()
-        if records and isinstance(records, list):
+        if records:
             r = records[0]
             progress = int(r.get("progress", 0))
             history = json.loads(r.get("history", "[]"))
@@ -39,9 +37,7 @@ def load_data():
         st.error(f"Erreur connexion Google Sheets : {e}")
         return {"progress": 0, "history": []}
 
-
 def save_data(data):
-    """Sauvegarde les données dans Google Sheets"""
     try:
         sheet = get_sheet()
         sheet.clear()
@@ -50,41 +46,34 @@ def save_data(data):
     except Exception as e:
         st.error(f"Impossible d'enregistrer sur Google Sheets : {e}")
 
-
-# --- CHARGEMENT DES DONNÉES ---
+# --- CHARGEMENT ---
 data = load_data()
 progress = data["progress"]
 history = data["history"]
 
 st.title("🚀 Fusée vers la tablette — Progression annuelle")
 
-# --- TRAITEMENT DU JOURNAL ---
+# --- HISTORIQUE EN COURBE ---
 if history:
     df = pd.DataFrame(history)
     df["delta"] = df.get("delta", df.get("value", 0))
     df["time"] = pd.to_datetime(df["time"], errors="coerce")
 
-    # Correction : ajoute l'année actuelle si absente
+    # ajoute l'année actuelle si absente
     df["time"] = df["time"].apply(
         lambda t: pd.Timestamp(f"{datetime.date.today().year}-{t.strftime('%m-%d %H:%M')}")
         if pd.notna(t) and t.year == 1900 else t
     )
-
     df = df.dropna(subset=["time"]).sort_values("time")
 
-    # Si après nettoyage, le DF est vide → on crée un point neutre
     if df.empty:
         df = pd.DataFrame([{"time": pd.Timestamp(datetime.date.today()), "altitude": 0}])
         fus_alt = 0
     else:
-        # Calcul cumulatif altitude
         altitude = 0
         alts = []
         for _, row in df.iterrows():
-            if row["action"] == "up":
-                altitude += row["delta"]
-            elif row["action"] == "down":
-                altitude -= row["delta"]
+            altitude += row["delta"] if row["action"] == "up" else -row["delta"]
             alts.append(max(0, altitude))
         df["altitude"] = alts
         fus_alt = df["altitude"].iloc[-1]
@@ -92,7 +81,7 @@ else:
     df = pd.DataFrame([{"time": pd.Timestamp(datetime.date.today()), "altitude": 0}])
     fus_alt = 0
 
-# --- DATES DE L’ANNÉE SCOLAIRE ---
+# --- DATES ÉCOLE ---
 today = datetime.date.today()
 start_year = today.year if today.month >= 9 else today.year - 1
 start = datetime.date(start_year, 9, 1)
@@ -104,17 +93,13 @@ if len(df) == 1:
         df
     ])
 
-# --- GRAPHIQUE ---
-if not df.empty:
-    base = alt.Chart(df).mark_line(
-        color="#00bfff",
-        strokeWidth=3
-    ).encode(
+# --- FONCTION GRAPHIQUE ---
+def afficher_graphique(altitude_actuelle):
+    base = alt.Chart(df).mark_line(color="#00bfff", strokeWidth=3).encode(
         x=alt.X("time:T", title="Temps (année scolaire)", scale=alt.Scale(domain=[start, end])),
         y=alt.Y("altitude:Q", title="Altitude (%)", scale=alt.Scale(domain=[0, 150]))
     )
 
-    # Ligne de Kármán
     karman_line = alt.Chart(pd.DataFrame({"y": [100]})).mark_rule(
         color="red", strokeDash=[6, 4], strokeWidth=2
     ).encode(y="y")
@@ -123,17 +108,22 @@ if not df.empty:
         align="left", dx=10, color="red", fontWeight="bold"
     ).encode(x="x", y="y", text=alt.value("Ligne de Kármán (100 %)"))
 
-    # Position de la fusée 🚀
     rocket = alt.Chart(pd.DataFrame({
         "x": [df["time"].iloc[-1]],
-        "y": [fus_alt]
+        "y": [altitude_actuelle]
     })).mark_text(text="🚀", size=30).encode(x="x", y="y")
 
-    chart = (base + karman_line + karman_label + rocket).properties(
-        width=800, height=400
-    )
+    return (base + karman_line + karman_label + rocket).properties(width=800, height=400)
 
-    st.altair_chart(chart, use_container_width=True)
+# --- ANIMATION ---
+graph_placeholder = st.empty()
+n_steps = 60
+if not df.empty:
+    for i in range(n_steps + 1):
+        ratio = i / n_steps
+        alt_now = fus_alt * ratio
+        graph_placeholder.altair_chart(afficher_graphique(alt_now), use_container_width=True)
+        time.sleep(0.03)
 else:
     st.warning("Aucune trajectoire à afficher 🚀")
 
