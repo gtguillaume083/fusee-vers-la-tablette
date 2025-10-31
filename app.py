@@ -3,12 +3,6 @@ import json, time
 import gspread
 from google.oauth2.service_account import Credentials
 
-try:
-    creds_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
-    st.success("✅ JSON Google valide !")
-except Exception as e:
-    st.error(f"❌ Erreur parsing JSON : {e}")
-
 
 # --- CONFIG ---
 st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="centered")
@@ -100,4 +94,4 @@ else:
 # --- Historique ---
 st.subheader("Historique des actions")
 for h in history[:10]:
-    st.write(f"🕓 {h['time']} — **{h['action']} de {h['delta']}%** : {h['reason']}")
+    st.write(f"🕓 {h.get('time', '?')} — **{h.get('action', '?')} de {h.get('delta', 0)}%** : {h.get('reason', '')}")
