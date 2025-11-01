@@ -44,10 +44,9 @@ if missing:
     st.error(f"⚠️ Secrets manquants : {', '.join(missing)}")
     st.stop()
 
-# Token admin facultatif
 ADMIN_TOKEN = st.secrets.get("ADMIN_TOKEN", None)
 
-# --- Connexion Google Sheets (avec cache) ---
+# --- Connexion Google Sheets ---
 @st.cache_resource
 def get_client():
     creds_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
@@ -106,7 +105,7 @@ if "admin" not in st.session_state:
     st.session_state.admin = False
 
 with st.expander("🔐 Mode administrateur", expanded=False):
-    token_input = st.text_input("Entre le code secret du pilote :", type="password", help="(C’est toi, le commandant de bord 👨‍🚀)")
+    token_input = st.text_input("Entre le code secret du pilote :", type="password")
     if st.button("Activer le mode admin"):
         if ADMIN_TOKEN and token_input == ADMIN_TOKEN:
             st.session_state.admin = True
@@ -146,46 +145,44 @@ if admin_mode:
 
 # --- Graphique de progression ---
 try:
-    if history is None:
-        history = []
-
-    if history:
+    if not history:
+        st.info("Aucune trajectoire à afficher 🚀")
+    else:
         df = pd.DataFrame(history)
         df["delta"] = df["delta"].astype(int)
-
-        # ✅ Dates correctes avec année incluse
         df["time"] = pd.to_datetime(df["time"], format="%Y-%m-%d %H:%M", errors="coerce")
         df = df.dropna(subset=["time"]).sort_values("time")
 
-        # 🧮 Calcul cumulatif
+        # 🧮 Calcul de l'altitude cumulée (fidèle à la version d'origine)
         altitude, total = [], 0
         for _, row in df.iterrows():
             total += row["delta"] if row["action"] == "up" else -row["delta"]
             altitude.append(max(0, total))
         df["altitude"] = altitude
 
-        # 📆 Année scolaire (septembre → juin)
+        # 📅 Générer une interpolation journalière fidèle
         today = datetime.datetime.now()
         start_date = datetime.datetime(today.year if today.month >= 9 else today.year - 1, 9, 1)
         end_date = datetime.datetime(start_date.year + 1, 6, 30)
-
         df_full = pd.DataFrame({"date": pd.date_range(start=start_date, end=end_date, freq="D")})
+
         df_full = pd.merge_asof(
             df_full.sort_values("date"),
             df.sort_values("time").rename(columns={"time": "date"}),
             on="date",
-            direction="nearest"
+            direction="forward"
         )
+
         df_full["altitude"].fillna(method="ffill", inplace=True)
         df_full["altitude"].fillna(0, inplace=True)
 
         df_interp = df_full[df_full["date"] <= today]
         fus_alt = df_interp["altitude"].iloc[-1]
 
-        # 📈 Création du graphique (fond noir)
+        # 📈 Création du graphique
         fig = go.Figure()
 
-        # 🌌 Bande espace
+        # Bande "espace"
         fig.add_shape(
             type="rect",
             xref="paper", x0=0, x1=1,
@@ -195,7 +192,7 @@ try:
             layer="below"
         )
 
-        # 🌤 Ligne de progression
+        # Courbe de progression
         fig.add_trace(go.Scatter(
             x=df_interp["date"],
             y=df_interp["altitude"],
@@ -204,7 +201,7 @@ try:
             name="Progression"
         ))
 
-        # 🚀 Fusée (plus grande)
+        # Fusée
         fig.add_trace(go.Scatter(
             x=[df_interp["date"].iloc[-1]],
             y=[fus_alt],
@@ -215,7 +212,7 @@ try:
             name="Fusée"
         ))
 
-        # 🔥 Flamme sous la fusée
+        # Flamme
         fig.add_trace(go.Scatter(
             x=[df_interp["date"].iloc[-1]],
             y=[fus_alt - 5],
@@ -226,8 +223,8 @@ try:
             name="Flamme"
         ))
 
-        # 🌌 Ligne de Karman (100 %)
-        fig.add_hline(y=100, line=dict(color="red", dash="dot"), name="Ligne de Karman")
+        # Ligne de Karman
+        fig.add_hline(y=100, line=dict(color="red", dash="dot"))
         fig.add_annotation(
             xref="paper", x=1.02, y=105,
             text="🌌 Ligne de Karman (100%)",
@@ -235,7 +232,7 @@ try:
             font=dict(size=12, color="red")
         )
 
-        # ✨ Mise en page sombre
+        # Style
         fig.update_layout(
             title="Trajectoire de la fusée",
             xaxis_title="Temps (du 1er septembre au 30 juin)",
@@ -261,8 +258,6 @@ try:
             st.markdown(
                 f"🕓 **{h['time']}** — *{h['action']} de {h['delta']} %* : {h['reason']}"
             )
-    else:
-        st.info("Aucune trajectoire à afficher 🚀")
 
 except Exception as e:
     st.error(f"❌ Erreur lors de l'affichage du graphique : {e}")
