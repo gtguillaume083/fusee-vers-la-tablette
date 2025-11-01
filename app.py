@@ -153,14 +153,19 @@ try:
         df["time"] = pd.to_datetime(df["time"], format="%Y-%m-%d %H:%M", errors="coerce")
         df = df.dropna(subset=["time"]).sort_values("time")
 
-        # 🧮 Calcul de l'altitude cumulée (fidèle à la version d'origine)
-        altitude, total = [], 0
+        # 🧮 Recalculer la progression réelle au fil du temps
+        total = 0
+        progress_points = []
         for _, row in df.iterrows():
             total += row["delta"] if row["action"] == "up" else -row["delta"]
-            altitude.append(max(0, total))
-        df["altitude"] = altitude
+            progress_points.append(max(0, total))
+        df["progress"] = progress_points
 
-        # 📅 Générer une interpolation journalière fidèle
+        # 🧭 On force la dernière valeur à être égale au "progress" global
+        if len(df):
+            df.loc[df.index[-1], "progress"] = progress
+
+        # 📅 Lissage temporel
         today = datetime.datetime.now()
         start_date = datetime.datetime(today.year if today.month >= 9 else today.year - 1, 9, 1)
         end_date = datetime.datetime(start_date.year + 1, 6, 30)
@@ -172,12 +177,11 @@ try:
             on="date",
             direction="forward"
         )
-
-        df_full["altitude"].fillna(method="ffill", inplace=True)
-        df_full["altitude"].fillna(0, inplace=True)
+        df_full["progress"].fillna(method="ffill", inplace=True)
+        df_full["progress"].fillna(0, inplace=True)
 
         df_interp = df_full[df_full["date"] <= today]
-        fus_alt = df_interp["altitude"].iloc[-1]
+        fus_alt = df_interp["progress"].iloc[-1]
 
         # 📈 Création du graphique
         fig = go.Figure()
@@ -192,10 +196,10 @@ try:
             layer="below"
         )
 
-        # Courbe de progression
+        # Courbe
         fig.add_trace(go.Scatter(
             x=df_interp["date"],
-            y=df_interp["altitude"],
+            y=df_interp["progress"],
             mode="lines",
             line=dict(color="deepskyblue", width=4),
             name="Progression"
@@ -232,7 +236,7 @@ try:
             font=dict(size=12, color="red")
         )
 
-        # Style
+        # Mise en forme
         fig.update_layout(
             title="Trajectoire de la fusée",
             xaxis_title="Temps (du 1er septembre au 30 juin)",
