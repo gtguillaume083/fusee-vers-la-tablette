@@ -92,50 +92,8 @@ history = data.get("history", [])
 
 st.markdown("<h1>🚀 Fusée vers la tablette — Progression annuelle</h1>", unsafe_allow_html=True)
 
-# --- Mode administrateur ---
-if "admin" not in st.session_state:
-    st.session_state.admin = False
-
-with st.expander("🔐 Mode administrateur", expanded=False):
-    token_input = st.text_input("Entre le token administrateur :", type="password")
-    if st.button("Activer le mode admin"):
-        if "ADMIN_TOKEN" in st.secrets and token_input == st.secrets["ADMIN_TOKEN"]:
-            st.session_state.admin = True
-            st.success("Mode admin activé ✅")
-        else:
-            st.error("Token invalide ❌")
-
-admin_mode = st.session_state.admin
-
 # --- Altitude actuelle ---
 st.metric(label="Altitude actuelle", value=f"{progress} %")
-
-# --- Interface administrateur ---
-if admin_mode:
-    st.markdown("### ⚙️ Modifier la progression")
-    col1, col2 = st.columns(2)
-    with col1:
-        up = st.number_input("⬆️ Augmenter de :", min_value=0, max_value=100, value=0, step=1)
-    with col2:
-        down = st.number_input("⬇️ Diminuer de :", min_value=0, max_value=100, value=0, step=1)
-    reason = st.text_input("Motif de la modification :")
-    if st.button("💾 Enregistrer la modification"):
-        now = datetime.datetime.now().strftime("%d/%m %H:%M")
-        delta = up - down
-        if delta != 0:
-            progress = max(0, progress + delta)
-            history.insert(0, {
-                "time": now,
-                "action": "up" if delta > 0 else "down",
-                "delta": abs(delta),
-                "reason": reason if reason else "(non précisé)"
-            })
-            data = {"progress": progress, "history": history}
-            save_data(data)
-            st.success("Progression mise à jour ✅")
-            st.rerun()
-        else:
-            st.info("Aucun changement détecté.")
 
 # --- Graphique de progression ---
 try:
@@ -263,3 +221,45 @@ try:
 
 except Exception as e:
     st.error(f"❌ Erreur lors de l'affichage du graphique : {e}")
+
+# --- Mode administrateur (déplacé en bas) ---
+st.markdown("---")
+st.markdown("### 🔐 Panneau de commande (admin)")
+
+if "admin" not in st.session_state:
+    st.session_state.admin = False
+
+with st.expander("🔧 Contrôle de la fusée", expanded=False):
+    token_input = st.text_input("Entre le code secret :", type="password")
+    if st.button("Activer le mode admin"):
+        if "ADMIN_TOKEN" in st.secrets and token_input == st.secrets["ADMIN_TOKEN"]:
+            st.session_state.admin = True
+            st.success("Mode admin activé ✅")
+        else:
+            st.error("Code invalide ❌")
+
+if st.session_state.admin:
+    st.markdown("#### ⚙️ Modifier la progression")
+    col1, col2 = st.columns(2)
+    with col1:
+        up = st.number_input("⬆️ Augmenter de :", min_value=0, max_value=100, value=0, step=1)
+    with col2:
+        down = st.number_input("⬇️ Diminuer de :", min_value=0, max_value=100, value=0, step=1)
+    reason = st.text_input("Motif de la modification :")
+    if st.button("💾 Enregistrer la modification"):
+        now = datetime.datetime.now().strftime("%d/%m %H:%M")
+        delta = up - down
+        if delta != 0:
+            progress = max(0, progress + delta)
+            history.insert(0, {
+                "time": now,
+                "action": "up" if delta > 0 else "down",
+                "delta": abs(delta),
+                "reason": reason if reason else "(non précisé)"
+            })
+            data = {"progress": progress, "history": history}
+            save_data(data)
+            st.success("Progression mise à jour ✅")
+            st.rerun()
+        else:
+            st.info("Aucun changement détecté.")
