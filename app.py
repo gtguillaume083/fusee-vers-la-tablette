@@ -159,8 +159,20 @@ try:
         df_interp = df_full[df_full["date"] <= today]
         fus_alt = df_interp["altitude"].iloc[-1]
 
-        # 📈 Graphique
+        # 📈 Création du graphique
         fig = go.Figure()
+
+        # 🌌 Bande "espace" au-dessus de 100 %
+        fig.add_shape(
+            type="rect",
+            xref="paper", x0=0, x1=1,
+            yref="y", y0=100, y1=130,
+            fillcolor="rgba(0, 0, 80, 0.15)",
+            line=dict(width=0),
+            layer="below"
+        )
+
+        # 🌤 Ligne de progression
         fig.add_trace(go.Scatter(
             x=df_interp["date"],
             y=df_interp["altitude"],
@@ -189,7 +201,7 @@ try:
             name="Fusée"
         ))
 
-        # ✨ Layout
+        # ✨ Mise en page
         fig.update_layout(
             title="Trajectoire de la fusée",
             xaxis_title="Temps (du 1er septembre au 30 juin)",
@@ -197,7 +209,8 @@ try:
             yaxis=dict(range=[0, max(130, fus_alt + 10)]),
             width=900,
             height=500,
-            template="plotly_white"
+            template="plotly_white",
+            plot_bgcolor="white"
         )
 
         st.plotly_chart(fig, use_container_width=True)
