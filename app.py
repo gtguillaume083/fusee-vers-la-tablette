@@ -6,7 +6,46 @@ import datetime
 import plotly.graph_objects as go
 from google.oauth2.service_account import Credentials
 
+# --- Configuration de la page ---
 st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="wide")
+
+# 🌑 --- Thème global sombre ---
+st.markdown(
+    """
+    <style>
+    body {
+        background-color: #000 !important;
+        color: #fff !important;
+    }
+    .stApp {
+        background-color: #000 !important;
+    }
+    .stMarkdown, .stMetric, .stTextInput, .stNumberInput, .stButton, .stExpander {
+        color: #fff !important;
+    }
+    h1 {
+        font-size: 1.6rem !important;
+        color: #ffffff !important;
+        text-align: center;
+        margin-bottom: 0.5em;
+    }
+    h2, h3, h4 {
+        color: #ffffff !important;
+    }
+    .css-18e3th9 {
+        background-color: #000 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# --- Vérification des secrets ---
+required_secrets = ["GOOGLE_CREDENTIALS", "SHEET_ID", "ADMIN_TOKEN"]
+missing = [k for k in required_secrets if k not in st.secrets]
+if missing:
+    st.error(f"⚠️ Secrets manquants : {', '.join(missing)}")
+    st.stop()
 
 # --- Connexion Google Sheets (avec cache) ---
 @st.cache_resource
@@ -47,22 +86,20 @@ def load_data():
 def save_data(data):
     try:
         sheet = get_sheet()
-        sheet.clear()
-        sheet.append_row(["progress", "history"])
-        sheet.append_row([
+        sheet.update('A2:B2', [[
             int(data.get("progress", 0)),
             json.dumps(data.get("history", []), ensure_ascii=False)
-        ])
+        ]])
     except Exception as e:
         st.error(f"❌ Impossible d'enregistrer sur Google Sheets : {e}")
-
 
 # --- Charger les données ---
 data = load_data()
 progress = data.get("progress", 0)
 history = data.get("history", [])
 
-st.title("🚀 Fusée vers la tablette — Progression annuelle")
+# --- Titre ---
+st.markdown("<h1>🚀 Fusée vers la tablette — Progression annuelle</h1>", unsafe_allow_html=True)
 
 # --- Mode administrateur ---
 if "admin" not in st.session_state:
@@ -80,22 +117,15 @@ with st.expander("🔐 Mode administrateur", expanded=False):
 admin_mode = st.session_state.admin
 
 # --- Altitude actuelle ---
-st.subheader("Altitude actuelle :")
-st.metric(label="Progression", value=f"{progress} %")
+st.metric(label="Altitude actuelle", value=f"{progress} %")
 
 # --- Interface administrateur ---
 if admin_mode:
     st.markdown("### ⚙️ Modifier la progression")
-    col1, col2 = st.columns(2)
-    with col1:
-        up = st.number_input("⬆️ Augmenter de :", min_value=0, max_value=100, value=0, step=1)
-    with col2:
-        down = st.number_input("⬇️ Diminuer de :", min_value=0, max_value=100, value=0, step=1)
-
+    delta = st.slider("Variation de progression (%)", -20, 20, 0)
     reason = st.text_input("Motif de la modification :")
     if st.button("💾 Enregistrer la modification"):
-        now = datetime.datetime.now().strftime("%d/%m %H:%M")
-        delta = up - down
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
         if delta != 0:
             progress = max(0, progress + delta)
             history.insert(0, {
@@ -120,19 +150,9 @@ try:
         df = pd.DataFrame(history)
         df["delta"] = df["delta"].astype(int)
 
-        # 🔧 Convertir les dates (année scolaire)
-        def parse_school_date(date_str):
-            try:
-                d = datetime.datetime.strptime(date_str, "%d/%m %H:%M")
-                today = datetime.datetime.now()
-                school_year = today.year if d.month >= 9 else today.year - 1
-                return d.replace(year=school_year)
-            except Exception:
-                return pd.NaT
-
-        df["time"] = df["time"].apply(parse_school_date)
-        df = df.dropna(subset=["time"])
-        df = df.sort_values("time")
+        # ✅ Dates correctes avec année incluse
+        df["time"] = pd.to_datetime(df["time"], format="%Y-%m-%d %H:%M", errors="coerce")
+        df = df.dropna(subset=["time"]).sort_values("time")
 
         # 🧮 Calcul cumulatif
         altitude, total = [], 0
@@ -151,7 +171,7 @@ try:
             df_full.sort_values("date"),
             df.sort_values("time").rename(columns={"time": "date"}),
             on="date",
-            direction="forward"
+            direction="nearest"
         )
         df_full["altitude"].fillna(method="ffill", inplace=True)
         df_full["altitude"].fillna(0, inplace=True)
@@ -159,15 +179,15 @@ try:
         df_interp = df_full[df_full["date"] <= today]
         fus_alt = df_interp["altitude"].iloc[-1]
 
-        # 📈 Création du graphique
+        # 📈 Création du graphique (fond noir)
         fig = go.Figure()
 
-        # 🌌 Bande "espace" au-dessus de 100 %
+        # 🌌 Bande espace
         fig.add_shape(
             type="rect",
             xref="paper", x0=0, x1=1,
             yref="y", y0=100, y1=130,
-            fillcolor="rgba(0, 0, 80, 0.15)",
+            fillcolor="rgba(0, 0, 120, 0.25)",
             line=dict(width=0),
             layer="below"
         )
@@ -177,8 +197,30 @@ try:
             x=df_interp["date"],
             y=df_interp["altitude"],
             mode="lines",
-            line=dict(color="skyblue", width=4),
+            line=dict(color="deepskyblue", width=4),
             name="Progression"
+        ))
+
+        # 🚀 Fusée
+        fig.add_trace(go.Scatter(
+            x=[df_interp["date"].iloc[-1]],
+            y=[fus_alt],
+            mode="text",
+            text=["🚀"],
+            textfont=dict(size=40),
+            textposition="middle center",
+            name="Fusée"
+        ))
+
+        # 🔥 Flamme sous la fusée
+        fig.add_trace(go.Scatter(
+            x=[df_interp["date"].iloc[-1]],
+            y=[fus_alt - 4],
+            mode="text",
+            text=["🔥"],
+            textfont=dict(size=25),
+            textposition="top center",
+            name="Flamme"
         ))
 
         # 🌌 Ligne de Karman (100 %)
@@ -190,27 +232,19 @@ try:
             font=dict(size=12, color="red")
         )
 
-        # 🚀 Fusée
-        fig.add_trace(go.Scatter(
-            x=[df_interp["date"].iloc[-1]],
-            y=[fus_alt],
-            mode="markers+text",
-            marker=dict(size=30, symbol="star", color="orange"),
-            text=["🚀"],
-            textposition="top center",
-            name="Fusée"
-        ))
-
-        # ✨ Mise en page
+        # ✨ Mise en page sombre
         fig.update_layout(
             title="Trajectoire de la fusée",
             xaxis_title="Temps (du 1er septembre au 30 juin)",
             yaxis_title="Altitude (%)",
-            yaxis=dict(range=[0, max(130, fus_alt + 10)]),
-            width=900,
-            height=500,
-            template="plotly_white",
-            plot_bgcolor="white"
+            yaxis=dict(range=[0, max(130, fus_alt + 10)], color="white"),
+            xaxis=dict(color="white"),
+            width=950,
+            height=550,
+            plot_bgcolor="#000",
+            paper_bgcolor="#000",
+            font=dict(color="white"),
+            margin=dict(l=50, r=50, t=50, b=50)
         )
 
         st.plotly_chart(fig, use_container_width=True)
