@@ -9,7 +9,7 @@ from google.oauth2.service_account import Credentials
 # --- Configuration de la page ---
 st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="wide")
 
-# 🌑 --- Thème global sombre ---
+# 🌑 --- Thème sombre global ---
 st.markdown(
     """
     <style>
@@ -32,20 +32,20 @@ st.markdown(
     h2, h3, h4 {
         color: #ffffff !important;
     }
-    .css-18e3th9 {
-        background-color: #000 !important;
-    }
     </style>
     """,
     unsafe_allow_html=True
 )
 
 # --- Vérification des secrets ---
-required_secrets = ["GOOGLE_CREDENTIALS", "SHEET_ID", "ADMIN_TOKEN"]
+required_secrets = ["GOOGLE_CREDENTIALS", "SHEET_ID"]
 missing = [k for k in required_secrets if k not in st.secrets]
 if missing:
     st.error(f"⚠️ Secrets manquants : {', '.join(missing)}")
     st.stop()
+
+# Token admin facultatif
+ADMIN_TOKEN = st.secrets.get("ADMIN_TOKEN", None)
 
 # --- Connexion Google Sheets (avec cache) ---
 @st.cache_resource
@@ -106,13 +106,16 @@ if "admin" not in st.session_state:
     st.session_state.admin = False
 
 with st.expander("🔐 Mode administrateur", expanded=False):
-    token_input = st.text_input("Entre le token administrateur :", type="password")
+    token_input = st.text_input("Entre le code secret du pilote :", type="password", help="(C’est toi, le commandant de bord 👨‍🚀)")
     if st.button("Activer le mode admin"):
-        if token_input == st.secrets["ADMIN_TOKEN"]:
+        if ADMIN_TOKEN and token_input == ADMIN_TOKEN:
             st.session_state.admin = True
             st.success("Mode admin activé ✅")
+        elif not ADMIN_TOKEN:
+            st.warning("⚙️ Aucun code admin défini — accès libre autorisé pour test.")
+            st.session_state.admin = True
         else:
-            st.error("Token invalide ❌")
+            st.error("Code incorrect ❌")
 
 admin_mode = st.session_state.admin
 
@@ -201,13 +204,13 @@ try:
             name="Progression"
         ))
 
-        # 🚀 Fusée
+        # 🚀 Fusée (plus grande)
         fig.add_trace(go.Scatter(
             x=[df_interp["date"].iloc[-1]],
             y=[fus_alt],
             mode="text",
             text=["🚀"],
-            textfont=dict(size=40),
+            textfont=dict(size=48),
             textposition="middle center",
             name="Fusée"
         ))
@@ -215,10 +218,10 @@ try:
         # 🔥 Flamme sous la fusée
         fig.add_trace(go.Scatter(
             x=[df_interp["date"].iloc[-1]],
-            y=[fus_alt - 4],
+            y=[fus_alt - 5],
             mode="text",
             text=["🔥"],
-            textfont=dict(size=25),
+            textfont=dict(size=28),
             textposition="top center",
             name="Flamme"
         ))
