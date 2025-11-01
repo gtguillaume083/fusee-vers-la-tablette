@@ -37,15 +37,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- Vérification des secrets ---
-required_secrets = ["GOOGLE_CREDENTIALS", "SHEET_ID"]
-missing = [k for k in required_secrets if k not in st.secrets]
-if missing:
-    st.error(f"⚠️ Secrets manquants : {', '.join(missing)}")
-    st.stop()
-
-ADMIN_TOKEN = st.secrets.get("ADMIN_TOKEN", None)
-
 # --- Connexion Google Sheets ---
 @st.cache_resource
 def get_client():
@@ -85,10 +76,12 @@ def load_data():
 def save_data(data):
     try:
         sheet = get_sheet()
-        sheet.update('A2:B2', [[
+        sheet.clear()
+        sheet.append_row(["progress", "history"])
+        sheet.append_row([
             int(data.get("progress", 0)),
             json.dumps(data.get("history", []), ensure_ascii=False)
-        ]])
+        ])
     except Exception as e:
         st.error(f"❌ Impossible d'enregistrer sur Google Sheets : {e}")
 
@@ -97,7 +90,6 @@ data = load_data()
 progress = data.get("progress", 0)
 history = data.get("history", [])
 
-# --- Titre ---
 st.markdown("<h1>🚀 Fusée vers la tablette — Progression annuelle</h1>", unsafe_allow_html=True)
 
 # --- Mode administrateur ---
@@ -105,16 +97,13 @@ if "admin" not in st.session_state:
     st.session_state.admin = False
 
 with st.expander("🔐 Mode administrateur", expanded=False):
-    token_input = st.text_input("Entre le code secret du pilote :", type="password")
+    token_input = st.text_input("Entre le token administrateur :", type="password")
     if st.button("Activer le mode admin"):
-        if ADMIN_TOKEN and token_input == ADMIN_TOKEN:
+        if "ADMIN_TOKEN" in st.secrets and token_input == st.secrets["ADMIN_TOKEN"]:
             st.session_state.admin = True
             st.success("Mode admin activé ✅")
-        elif not ADMIN_TOKEN:
-            st.warning("⚙️ Aucun code admin défini — accès libre autorisé pour test.")
-            st.session_state.admin = True
         else:
-            st.error("Code incorrect ❌")
+            st.error("Token invalide ❌")
 
 admin_mode = st.session_state.admin
 
@@ -124,10 +113,15 @@ st.metric(label="Altitude actuelle", value=f"{progress} %")
 # --- Interface administrateur ---
 if admin_mode:
     st.markdown("### ⚙️ Modifier la progression")
-    delta = st.slider("Variation de progression (%)", -20, 20, 0)
+    col1, col2 = st.columns(2)
+    with col1:
+        up = st.number_input("⬆️ Augmenter de :", min_value=0, max_value=100, value=0, step=1)
+    with col2:
+        down = st.number_input("⬇️ Diminuer de :", min_value=0, max_value=100, value=0, step=1)
     reason = st.text_input("Motif de la modification :")
     if st.button("💾 Enregistrer la modification"):
-        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        now = datetime.datetime.now().strftime("%d/%m %H:%M")
+        delta = up - down
         if delta != 0:
             progress = max(0, progress + delta)
             history.insert(0, {
@@ -145,45 +139,50 @@ if admin_mode:
 
 # --- Graphique de progression ---
 try:
-    if not history:
-        st.info("Aucune trajectoire à afficher 🚀")
-    else:
+    if history is None:
+        history = []
+
+    if history:
         df = pd.DataFrame(history)
         df["delta"] = df["delta"].astype(int)
-        df["time"] = pd.to_datetime(df["time"], format="%Y-%m-%d %H:%M", errors="coerce")
-        df = df.dropna(subset=["time"]).sort_values("time")
 
-        # 🧮 Recalculer la progression réelle au fil du temps
-        total = 0
-        progress_points = []
+        def parse_school_date(date_str):
+            try:
+                d = datetime.datetime.strptime(date_str, "%d/%m %H:%M")
+                today = datetime.datetime.now()
+                school_year = today.year if d.month >= 9 else today.year - 1
+                return d.replace(year=school_year)
+            except Exception:
+                return pd.NaT
+
+        df["time"] = df["time"].apply(parse_school_date)
+        df = df.dropna(subset=["time"])
+        df = df.sort_values("time")
+
+        altitude, total = [], 0
         for _, row in df.iterrows():
             total += row["delta"] if row["action"] == "up" else -row["delta"]
-            progress_points.append(max(0, total))
-        df["progress"] = progress_points
+            altitude.append(max(0, total))
+        df["altitude"] = altitude
 
-        # 🧭 On force la dernière valeur à être égale au "progress" global
-        if len(df):
-            df.loc[df.index[-1], "progress"] = progress
-
-        # 📅 Lissage temporel
         today = datetime.datetime.now()
         start_date = datetime.datetime(today.year if today.month >= 9 else today.year - 1, 9, 1)
         end_date = datetime.datetime(start_date.year + 1, 6, 30)
-        df_full = pd.DataFrame({"date": pd.date_range(start=start_date, end=end_date, freq="D")})
 
+        df_full = pd.DataFrame({"date": pd.date_range(start=start_date, end=end_date, freq="D")})
         df_full = pd.merge_asof(
             df_full.sort_values("date"),
             df.sort_values("time").rename(columns={"time": "date"}),
             on="date",
             direction="forward"
         )
-        df_full["progress"].fillna(method="ffill", inplace=True)
-        df_full["progress"].fillna(0, inplace=True)
+        df_full["altitude"].fillna(method="ffill", inplace=True)
+        df_full["altitude"].fillna(0, inplace=True)
 
         df_interp = df_full[df_full["date"] <= today]
-        fus_alt = df_interp["progress"].iloc[-1]
+        fus_alt = df_interp["altitude"].iloc[-1]
 
-        # 📈 Création du graphique
+        # --- Graphique ---
         fig = go.Figure()
 
         # Bande "espace"
@@ -196,35 +195,13 @@ try:
             layer="below"
         )
 
-        # Courbe
+        # Ligne de progression
         fig.add_trace(go.Scatter(
             x=df_interp["date"],
-            y=df_interp["progress"],
+            y=df_interp["altitude"],
             mode="lines",
             line=dict(color="deepskyblue", width=4),
             name="Progression"
-        ))
-
-        # Fusée
-        fig.add_trace(go.Scatter(
-            x=[df_interp["date"].iloc[-1]],
-            y=[fus_alt],
-            mode="text",
-            text=["🚀"],
-            textfont=dict(size=48),
-            textposition="middle center",
-            name="Fusée"
-        ))
-
-        # Flamme
-        fig.add_trace(go.Scatter(
-            x=[df_interp["date"].iloc[-1]],
-            y=[fus_alt - 5],
-            mode="text",
-            text=["🔥"],
-            textfont=dict(size=28),
-            textposition="top center",
-            name="Flamme"
         ))
 
         # Ligne de Karman
@@ -236,7 +213,27 @@ try:
             font=dict(size=12, color="red")
         )
 
-        # Mise en forme
+        # Fusée + flamme
+        fig.add_trace(go.Scatter(
+            x=[df_interp["date"].iloc[-1]],
+            y=[fus_alt],
+            mode="text",
+            text=["🚀"],
+            textfont=dict(size=50),
+            textposition="middle center",
+            name="Fusée"
+        ))
+        fig.add_trace(go.Scatter(
+            x=[df_interp["date"].iloc[-1]],
+            y=[fus_alt - 5],
+            mode="text",
+            text=["🔥"],
+            textfont=dict(size=28),
+            textposition="top center",
+            name="Flamme"
+        ))
+
+        # Design sombre
         fig.update_layout(
             title="Trajectoire de la fusée",
             xaxis_title="Temps (du 1er septembre au 30 juin)",
@@ -253,7 +250,6 @@ try:
 
         st.plotly_chart(fig, use_container_width=True)
 
-        # --- Texte sous le graphique ---
         st.markdown("### 🧭 Altitude actuelle :")
         st.metric(label="Progression", value=f"{progress} %")
 
@@ -262,6 +258,8 @@ try:
             st.markdown(
                 f"🕓 **{h['time']}** — *{h['action']} de {h['delta']} %* : {h['reason']}"
             )
+    else:
+        st.info("Aucune trajectoire à afficher 🚀")
 
 except Exception as e:
     st.error(f"❌ Erreur lors de l'affichage du graphique : {e}")
