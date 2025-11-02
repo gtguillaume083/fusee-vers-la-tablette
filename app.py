@@ -13,9 +13,13 @@ st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="wide")
 st.markdown(
     """
     <style>
-    /* Supprime le bandeau Streamlit */
+   /* Supprime le bandeau supérieur Streamlit */
     header[data-testid="stHeader"] { display: none !important; }
     .block-container { padding-top: 0rem !important; }
+
+    /* Supprime la barre de bas de page Streamlit */
+    footer { visibility: hidden !important; }
+    [data-testid="stToolbar"] { display: none !important; }
 
     /* Dégradé : bleu clair (bas) → bleu foncé → noir (haut) */
     .stApp {
