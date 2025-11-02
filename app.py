@@ -7,78 +7,51 @@ import plotly.graph_objects as go
 from google.oauth2.service_account import Credentials
 
 # --- Configuration de la page ---
-st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="wide")
+st.set_page_config(page_title="🚀 Fusée vers la tablette — Progression annuelle", layout="wide")
 
 # 🌑 --- Thème sombre + version mobile portrait optimisée ---
 st.markdown(
     """
     <style>
-    body {
-        background-color: #000 !important;
-        color: #fff !important;
-    }
+    :root { --pad-x: 0.8rem; }
 
-    .stApp {
-        background-color: #000 !important;
+    body { background-color: #000 !important; color: #fff !important; }
+    .stApp { background-color: #000 !important; }
+
+    /* Conteneur plein écran pour éviter la coupure du titre */
+    .block-container {
+        max-width: 100vw !important;
+        padding-left: var(--pad-x) !important;
+        padding-right: var(--pad-x) !important;
+        padding-top: 0.5rem !important;
+        padding-bottom: 1rem !important;
     }
 
     h1 {
         font-size: 1.8rem !important;
         color: #fff !important;
         text-align: center;
-        margin-top: 0.3em;
-        margin-bottom: 0.4em;
+        margin: 0.3em 0 0.4em 0 !important;
         line-height: 1.2;
+        padding: 0 0.2rem; /* évite que le début soit rogné */
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
     }
 
-    h2, h3, h4 {
-        color: #fff !important;
-    }
+    .stMetric { text-align: center !important; margin: -0.3em 0 0.5em 0 !important; }
+    [data-testid="stMetricLabel"] { font-size: 0.9rem !important; color: #ccc !important; }
+    [data-testid="stMetricValue"] { font-size: 2rem !important; color: #00bfff !important; font-weight: bold; }
 
-    .stMetric {
-        text-align: center !important;
-        margin-top: -0.5em !important;
-        margin-bottom: 0.5em !important;
-    }
+    /* Plotly en plein largeur/hauteur contrôlée */
+    .stPlotlyChart { width: 100% !important; height: 60vh !important; }
 
-    [data-testid="stMetricLabel"] {
-        font-size: 0.9rem !important;
-        color: #ccc !important;
-    }
-
-    [data-testid="stMetricValue"] {
-        font-size: 2rem !important;
-        color: #00bfff !important;
-        font-weight: bold;
-    }
-
-    .stPlotlyChart {
-        height: 55vh !important;
-        width: 100% !important;
-    }
-
-    .block-container {
-        padding-top: 0.5rem !important;
-        padding-bottom: 1rem !important;
-        max-width: 95vw !important;
-    }
-
-    /* 📱 Version portrait : design resserré, lisible et centré */
+    /* 📱 Portrait mobile */
     @media (max-width: 768px) {
-        h1 {
-            font-size: 1.4rem !important;
-            margin-bottom: 0.2em !important;
-        }
-        [data-testid="stMetricValue"] {
-            font-size: 1.6rem !important;
-        }
-        .stPlotlyChart {
-            height: 60vh !important;
-        }
-        .block-container {
-            padding-top: 0.2rem !important;
-            padding-bottom: 0.5rem !important;
-        }
+        h1 { font-size: 1.4rem !important; margin-bottom: 0.2em !important; }
+        [data-testid="stMetricValue"] { font-size: 1.6rem !important; }
+        .stPlotlyChart { height: 65vh !important; }
+        .block-container { padding-top: 0.2rem !important; padding-bottom: 0.6rem !important; }
     }
     </style>
     """,
@@ -142,7 +115,7 @@ history = data.get("history", [])
 st.markdown("<h1>🚀 Fusée vers la tablette — Progression annuelle</h1>", unsafe_allow_html=True)
 st.metric(label="Altitude actuelle", value=f"{progress} %")
 
-# --- Graphique de progression ---
+# --- Graphique de progression (sans légende) ---
 try:
     if history is None:
         history = []
@@ -161,8 +134,7 @@ try:
                 return pd.NaT
 
         df["time"] = df["time"].apply(parse_school_date)
-        df = df.dropna(subset=["time"])
-        df = df.sort_values("time")
+        df = df.dropna(subset=["time"]).sort_values("time")
 
         altitude, total = [], 0
         for _, row in df.iterrows():
@@ -200,25 +172,26 @@ try:
             layer="below"
         )
 
-        # Ligne de progression
+        # Courbe de progression (pas de légende)
         fig.add_trace(go.Scatter(
             x=df_interp["date"],
             y=df_interp["altitude"],
             mode="lines",
             line=dict(color="deepskyblue", width=4),
-            name="Progression"
+            showlegend=False  # ✅ masque la légende de cette trace
         ))
 
-        # Ligne de Karman
+        # Ligne de Karman + annotation
         fig.add_hline(y=100, line=dict(color="red", dash="dot"))
         fig.add_annotation(
-            xref="paper", x=1.02, y=105,
+            xref="paper", x=1.005, y=103,
             text="🌌 Ligne de Karman (100%)",
             showarrow=False,
-            font=dict(size=12, color="red")
+            font=dict(size=12, color="red"),
+            xanchor="left"
         )
 
-        # Fusée + flamme
+        # Fusée + flamme (sans entrée légende)
         fig.add_trace(go.Scatter(
             x=[df_interp["date"].iloc[-1]],
             y=[fus_alt],
@@ -226,7 +199,7 @@ try:
             text=["🚀"],
             textfont=dict(size=50),
             textposition="middle center",
-            name="Fusée"
+            showlegend=False
         ))
         fig.add_trace(go.Scatter(
             x=[df_interp["date"].iloc[-1]],
@@ -235,22 +208,23 @@ try:
             text=["🔥"],
             textfont=dict(size=28),
             textposition="top center",
-            name="Flamme"
+            showlegend=False
         ))
 
-        # Design sombre + compact
+        # Design sombre + compact, légende globale off
         fig.update_layout(
-            title="Trajectoire de la fusée",
+            title=None,  # on garde le <h1> au-dessus, plus propre
             xaxis_title="Temps (du 1er septembre au 30 juin)",
             yaxis_title="Altitude (%)",
             yaxis=dict(range=[0, max(130, fus_alt + 10)], color="white"),
             xaxis=dict(color="white"),
             width=None,
             height=450,
+            showlegend=False,  # ✅ légende globablement désactivée
             plot_bgcolor="#000",
             paper_bgcolor="#000",
             font=dict(color="white"),
-            margin=dict(l=40, r=40, t=40, b=40)
+            margin=dict(l=30, r=30, t=10, b=30)
         )
 
         st.plotly_chart(fig, use_container_width=True)
@@ -306,11 +280,11 @@ if st.session_state.admin:
             data = {"progress": progress, "history": history}
             save_data(data)
 
-            # ✅ Rafraîchir immédiatement les données mises en cache
+            # Rafraîchir immédiatement les données mises en cache
             st.cache_data.clear()
             st.success("Progression mise à jour ✅")
 
-            # ✅ Relancer le script (recharge depuis la Sheet)
+            # Relancer le script (recharge depuis la Sheet)
             st.rerun()
         else:
             st.info("Aucun changement détecté.")
