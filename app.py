@@ -9,7 +9,7 @@ from google.oauth2.service_account import Credentials
 # --- Configuration de la page ---
 st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="wide")
 
-# 🌑 --- Thème sombre + dégradé CSS bleu → noir ---
+# 🌑 --- Thème sombre + dégradé Terre → Espace ---
 st.markdown(
     """
     <style>
@@ -17,9 +17,9 @@ st.markdown(
     header[data-testid="stHeader"] { display: none !important; }
     .block-container { padding-top: 0rem !important; }
 
-    /* Dégradé de fond vertical (bleu -> noir) */
+    /* Dégradé : bleu clair (bas) → bleu foncé → noir (haut) */
     .stApp {
-        background: linear-gradient(to bottom, #009dff 0%, #001848 60%, #000000 100%) !important;
+        background: linear-gradient(to top, #00bfff 0%, #001848 60%, #000000 100%) !important;
         color: white !important;
     }
 
