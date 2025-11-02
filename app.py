@@ -169,73 +169,88 @@ try:
         df_interp = df_full[df_full["date"] <= today]
         fus_alt = df_interp["altitude"].iloc[-1]
 
-        # --- Graphique ---
-        fig = go.Figure()
+ # --- Graphique ---
+fig = go.Figure()
 
-        # Bande "espace"
-        fig.add_shape(
-            type="rect",
-            xref="paper", x0=0, x1=1,
-            yref="y", y0=100, y1=130,
-            fillcolor="rgba(0, 0, 120, 0.25)",
-            line=dict(width=0),
-            layer="below"
-        )
+# Dégradé atmosphère (bleu clair → bleu foncé → noir)
+fig.add_shape(
+    type="rect",
+    xref="paper", x0=0, x1=1,
+    yref="y", y0=0, y1=100,
+    fillcolor="rgba(0,191,255,0.15)",  # bleu clair en bas
+    layer="below",
+    line=dict(width=0)
+)
+fig.add_shape(
+    type="rect",
+    xref="paper", x0=0, x1=1,
+    yref="y", y0=50, y1=100,
+    fillcolor="rgba(0,0,80,0.6)",  # bleu profond vers la ligne de Karman
+    layer="below",
+    line=dict(width=0)
+)
 
-        # Courbe de progression (pas de légende)
-        fig.add_trace(go.Scatter(
-            x=df_interp["date"],
-            y=df_interp["altitude"],
-            mode="lines",
-            line=dict(color="deepskyblue", width=4),
-            showlegend=False  # ✅ masque la légende de cette trace
-        ))
+# Espace (au-delà de 100%)
+fig.add_shape(
+    type="rect",
+    xref="paper", x0=0, x1=1,
+    yref="y", y0=100, y1=130,
+    fillcolor="rgba(0,0,0,1)",  # noir total
+    layer="below",
+    line=dict(width=0)
+)
 
-        # Ligne de Karman + annotation
-        fig.add_hline(y=100, line=dict(color="red", dash="dot"))
-        fig.add_annotation(
-            xref="paper", x=1.005, y=103,
-            text="🌌 Ligne de Karman (100%)",
-            showarrow=False,
-            font=dict(size=12, color="red"),
-            xanchor="left"
-        )
+# Ligne de progression
+fig.add_trace(go.Scatter(
+    x=df_interp["date"],
+    y=df_interp["altitude"],
+    mode="lines",
+    line=dict(color="deepskyblue", width=4),
+    showlegend=False
+))
 
-        # Fusée + flamme (sans entrée légende)
-        fig.add_trace(go.Scatter(
-            x=[df_interp["date"].iloc[-1]],
-            y=[fus_alt],
-            mode="text",
-            text=["🚀"],
-            textfont=dict(size=50),
-            textposition="middle center",
-            showlegend=False
-        ))
-        fig.add_trace(go.Scatter(
-            x=[df_interp["date"].iloc[-1]],
-            y=[fus_alt - 5],
-            mode="text",
-            text=["🔥"],
-            textfont=dict(size=28),
-            textposition="top center",
-            showlegend=False
-        ))
+# Ligne de Karman
+fig.add_hline(
+    y=100,
+    line=dict(color="red", dash="dot", width=2)
+)
 
-        # Design sombre + compact, légende globale off
-        fig.update_layout(
-            title=None,  # on garde le <h1> au-dessus, plus propre
-            xaxis_title="Temps (du 1er septembre au 30 juin)",
-            yaxis_title="Altitude (%)",
-            yaxis=dict(range=[0, max(130, fus_alt + 10)], color="white"),
-            xaxis=dict(color="white"),
-            width=None,
-            height=450,
-            showlegend=False,  # ✅ légende globablement désactivée
-            plot_bgcolor="#000",
-            paper_bgcolor="#000",
-            font=dict(color="white"),
-            margin=dict(l=30, r=30, t=10, b=30)
-        )
+# Annotation centrée sur la ligne de Karman
+fig.add_annotation(
+    xref="paper", x=0.5, y=102,  # position au centre horizontal
+    text="🌌 Ligne de Karman (100%)",
+    showarrow=False,
+    font=dict(size=14, color="red", family="Arial Black"),
+    xanchor="center"
+)
+
+# Fusée (sans flamme)
+fig.add_trace(go.Scatter(
+    x=[df_interp["date"].iloc[-1]],
+    y=[fus_alt],
+    mode="text",
+    text=["🚀"],
+    textfont=dict(size=50),
+    textposition="middle center",
+    showlegend=False
+))
+
+# Design sombre et épuré
+fig.update_layout(
+    title=None,
+    xaxis_title=None,
+    yaxis_title=None,
+    yaxis=dict(range=[0, max(130, fus_alt + 10)], color="white"),
+    xaxis=dict(color="white"),
+    width=None,
+    height=450,
+    showlegend=False,
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="#000",
+    font=dict(color="white"),
+    margin=dict(l=20, r=20, t=10, b=30)
+)
+
 
         st.plotly_chart(fig, use_container_width=True)
 
