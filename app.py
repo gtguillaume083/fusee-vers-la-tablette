@@ -17,12 +17,6 @@ st.markdown(
     header[data-testid="stHeader"] { display: none !important; }
     .block-container { padding-top: 0rem !important; }
 
-    /* Supprime toutes les barres de bas de page, badges et toolbars */
-    footer { visibility: hidden !important; height: 0px !important; }
-    #MainMenu { visibility: hidden !important; }
-    .viewerBadge_container__1QSob { display: none !important; }
-    [data-testid="stToolbar"] { display: none !important; }
-
     /* Dégradé : bleu clair (bas) → bleu foncé → noir (haut) */
     .stApp {
         background: linear-gradient(to top, #00bfff 0%, #001848 60%, #000000 100%) !important;
@@ -61,7 +55,31 @@ st.markdown(
         [data-testid="stMetricValue"] { font-size: 1.6rem !important; }
         .stPlotlyChart { height: 70vh !important; }
     }
+
+        /* Cache par recouvrement dynamique du footer Streamlit */
+    footer, .viewerBadge_container__1QSob, #MainMenu { visibility: hidden !important; }
+    [data-testid="stToolbar"] { display: none !important; }
+
+    /* Élément de recouvrement collé en bas */
+    .footer-cover {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        height: 70px;
+        pointer-events: none;  /* permet de cliquer à travers */
+        background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 40%, rgba(0,0,0,0) 100%);
+        z-index: 9999;
+    }
+
+    @media (max-width: 768px) {
+        .footer-cover {
+            height: 60px;
+            background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 50%, rgba(0,0,0,0) 100%);
+        }
+    }
     </style>
+    <div class="footer-cover"></div>
     """,
     unsafe_allow_html=True
 )
