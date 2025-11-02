@@ -9,40 +9,28 @@ from google.oauth2.service_account import Credentials
 # --- Configuration de la page ---
 st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="wide")
 
-# 🌑 --- Thème sombre + version mobile portrait optimisée (bandeau Streamlit supprimé) ---
+# 🌑 --- Thème sombre + dégradé CSS bleu → noir ---
 st.markdown(
     """
     <style>
-    /* Supprime complètement le bandeau Streamlit */
-    header[data-testid="stHeader"] {
-        display: none !important;
-    }
+    /* Supprime le bandeau Streamlit */
+    header[data-testid="stHeader"] { display: none !important; }
+    .block-container { padding-top: 0rem !important; }
 
-    /* Supprime aussi l’espace vide laissé en haut */
-    .block-container {
-        padding-top: 0rem !important;
-    }
-
-    body {
-        background-color: #000 !important;
-        color: #fff !important;
-    }
-
+    /* Dégradé de fond vertical (bleu -> noir) */
     .stApp {
-        background-color: #000 !important;
+        background: linear-gradient(to bottom, #009dff 0%, #001848 60%, #000000 100%) !important;
+        color: white !important;
     }
+
+    body { color: white !important; }
 
     h1 {
         font-size: 1.8rem !important;
-        color: #fff !important;
         text-align: center;
         margin-top: 0.3em;
         margin-bottom: 0.4em;
-        line-height: 1.2;
-    }
-
-    h2, h3, h4 {
-        color: #fff !important;
+        color: #fff;
     }
 
     .stMetric {
@@ -51,38 +39,21 @@ st.markdown(
         margin-bottom: 0.5em !important;
     }
 
-    [data-testid="stMetricLabel"] {
-        font-size: 0.9rem !important;
-        color: #ccc !important;
-    }
-
     [data-testid="stMetricValue"] {
         font-size: 2rem !important;
-        color: #00bfff !important;
+        color: #00d4ff !important;
         font-weight: bold;
     }
 
     .stPlotlyChart {
-        height: 60vh !important;
+        height: 65vh !important;
         width: 100% !important;
     }
 
-    /* Ajustement mobile portrait */
     @media (max-width: 768px) {
-        h1 {
-            font-size: 1.4rem !important;
-            margin-bottom: 0.2em !important;
-        }
-        [data-testid="stMetricValue"] {
-            font-size: 1.6rem !important;
-        }
-        .stPlotlyChart {
-            height: 65vh !important;
-        }
-        .block-container {
-            padding-top: 0.2rem !important;
-            padding-bottom: 0.5rem !important;
-        }
+        h1 { font-size: 1.4rem !important; }
+        [data-testid="stMetricValue"] { font-size: 1.6rem !important; }
+        .stPlotlyChart { height: 70vh !important; }
     }
     </style>
     """,
@@ -143,8 +114,6 @@ progress = data.get("progress", 0)
 history = data.get("history", [])
 
 st.markdown("<h1>🚀 Fusée vers la tablette — Progression annuelle</h1>", unsafe_allow_html=True)
-
-# --- Altitude actuelle ---
 st.metric(label="Altitude actuelle", value=f"{progress} %")
 
 # --- Graphique de progression ---
@@ -195,40 +164,12 @@ try:
         # --- Graphique ---
         fig = go.Figure()
 
-        # Dégradé atmosphère (bleu clair → bleu foncé → noir)
-        fig.add_shape(
-            type="rect",
-            xref="paper", x0=0, x1=1,
-            yref="y", y0=0, y1=100,
-            fillcolor="rgba(0,191,255,0.15)",
-            layer="below",
-            line=dict(width=0)
-        )
-        fig.add_shape(
-            type="rect",
-            xref="paper", x0=0, x1=1,
-            yref="y", y0=50, y1=100,
-            fillcolor="rgba(0,0,80,0.6)",
-            layer="below",
-            line=dict(width=0)
-        )
-
-        # Espace (au-delà de 100%)
-        fig.add_shape(
-            type="rect",
-            xref="paper", x0=0, x1=1,
-            yref="y", y0=100, y1=130,
-            fillcolor="rgba(0,0,0,1)",
-            layer="below",
-            line=dict(width=0)
-        )
-
         # Ligne de progression
         fig.add_trace(go.Scatter(
             x=df_interp["date"],
             y=df_interp["altitude"],
             mode="lines",
-            line=dict(color="deepskyblue", width=4),
+            line=dict(color="deepskyblue", width=5),
             showlegend=False
         ))
 
@@ -247,7 +188,7 @@ try:
             xanchor="center"
         )
 
-        # Fusée (sans flamme)
+        # Fusée
         fig.add_trace(go.Scatter(
             x=[df_interp["date"].iloc[-1]],
             y=[fus_alt],
@@ -258,34 +199,16 @@ try:
             showlegend=False
         ))
 
-        # Design sombre et épuré
         fig.update_layout(
-            title=None,
-            xaxis_title=None,
-            yaxis_title=None,
             yaxis=dict(range=[0, max(130, fus_alt + 10)], color="white"),
             xaxis=dict(color="white"),
-            width=None,
-            height=450,
-            showlegend=False,
             plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="#000",
-            font=dict(color="white"),
-            margin=dict(l=20, r=20, t=10, b=30)
+            paper_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=20, r=20, t=10, b=30),
+            height=450
         )
 
         st.plotly_chart(fig, use_container_width=True)
-
-        st.markdown("### 🧭 Altitude actuelle :")
-        st.metric(label="Progression", value=f"{progress} %")
-
-        st.markdown("## 📜 Historique des actions")
-        for h in history:
-            st.markdown(
-                f"🕓 **{h['time']}** — *{h['action']} de {h['delta']} %* : {h['reason']}"
-            )
-    else:
-        st.info("Aucune trajectoire à afficher 🚀")
 
 except Exception as e:
     st.error(f"❌ Erreur lors de l'affichage du graphique : {e}")
