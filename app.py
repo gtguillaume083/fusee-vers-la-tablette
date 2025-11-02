@@ -60,26 +60,47 @@ st.markdown(
     footer, .viewerBadge_container__1QSob, #MainMenu { visibility: hidden !important; }
     [data-testid="stToolbar"] { display: none !important; }
 
-    /* Élément de recouvrement collé en bas */
+   /* Supprime le menu et la toolbar */
+    footer, #MainMenu, [data-testid="stToolbar"], .viewerBadge_container__1QSob {
+        visibility: hidden !important;
+        height: 0 !important;
+    }
+
+    /* Cache de recouvrement dynamique */
     .footer-cover {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100vw;
-        height: 70px;
-        pointer-events: none;  /* permet de cliquer à travers */
-        background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 40%, rgba(0,0,0,0) 100%);
-        z-index: 9999;
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 80px !important;
+        z-index: 999999 !important;
+        pointer-events: none !important;
+        background: linear-gradient(to top,
+            rgba(0, 0, 0, 0.98) 0%,
+            rgba(0, 0, 0, 0.85) 45%,
+            rgba(0, 0, 0, 0) 100%) !important;
+        animation: floatCover 4s ease-in-out infinite alternate;
+    }
+
+    @keyframes floatCover {
+        0% { opacity: 0.9; }
+        100% { opacity: 1; }
     }
 
     @media (max-width: 768px) {
         .footer-cover {
-            height: 60px;
-            background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 50%, rgba(0,0,0,0) 100%);
+            height: 70px !important;
         }
     }
     </style>
-    <div class="footer-cover"></div>
+    <script>
+    // Force le cache à se placer après chargement complet
+    window.addEventListener('load', function() {
+        const cover = document.createElement('div');
+        cover.className = 'footer-cover';
+        document.body.appendChild(cover);
+    });
+    </script>
     """,
     unsafe_allow_html=True
 )
