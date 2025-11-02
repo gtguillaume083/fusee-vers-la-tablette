@@ -13,6 +13,16 @@ st.set_page_config(page_title="🚀 Fusée vers la tablette — Progression annu
 st.markdown(
     """
     <style>
+    /* Supprime complètement le bandeau Streamlit */
+    header[data-testid="stHeader"] {
+        display: none !important;
+    }
+
+    /* Supprime aussi l’espace vide laissé en haut */
+    .block-container {
+        padding-top: 0rem !important;
+    }
+    
     :root { --pad-x: 0.8rem; }
 
     body { background-color: #000 !important; color: #fff !important; }
