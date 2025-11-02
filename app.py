@@ -7,9 +7,9 @@ import plotly.graph_objects as go
 from google.oauth2.service_account import Credentials
 
 # --- Configuration de la page ---
-st.set_page_config(page_title="🚀 Fusée vers la tablette — Progression annuelle", layout="wide")
+st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="wide")
 
-# 🌑 --- Thème sombre + version mobile portrait optimisée ---
+# 🌑 --- Thème sombre + version mobile portrait optimisée (bandeau Streamlit supprimé) ---
 st.markdown(
     """
     <style>
@@ -22,46 +22,67 @@ st.markdown(
     .block-container {
         padding-top: 0rem !important;
     }
-    
-    :root { --pad-x: 0.8rem; }
 
-    body { background-color: #000 !important; color: #fff !important; }
-    .stApp { background-color: #000 !important; }
+    body {
+        background-color: #000 !important;
+        color: #fff !important;
+    }
 
-    /* Conteneur plein écran pour éviter la coupure du titre */
-    .block-container {
-        max-width: 100vw !important;
-        padding-left: var(--pad-x) !important;
-        padding-right: var(--pad-x) !important;
-        padding-top: 0.5rem !important;
-        padding-bottom: 1rem !important;
+    .stApp {
+        background-color: #000 !important;
     }
 
     h1 {
         font-size: 1.8rem !important;
         color: #fff !important;
         text-align: center;
-        margin: 0.3em 0 0.4em 0 !important;
+        margin-top: 0.3em;
+        margin-bottom: 0.4em;
         line-height: 1.2;
-        padding: 0 0.2rem; /* évite que le début soit rogné */
-        white-space: normal !important;
-        overflow: visible !important;
-        text-overflow: clip !important;
     }
 
-    .stMetric { text-align: center !important; margin: -0.3em 0 0.5em 0 !important; }
-    [data-testid="stMetricLabel"] { font-size: 0.9rem !important; color: #ccc !important; }
-    [data-testid="stMetricValue"] { font-size: 2rem !important; color: #00bfff !important; font-weight: bold; }
+    h2, h3, h4 {
+        color: #fff !important;
+    }
 
-    /* Plotly en plein largeur/hauteur contrôlée */
-    .stPlotlyChart { width: 100% !important; height: 60vh !important; }
+    .stMetric {
+        text-align: center !important;
+        margin-top: -0.5em !important;
+        margin-bottom: 0.5em !important;
+    }
 
-    /* 📱 Portrait mobile */
+    [data-testid="stMetricLabel"] {
+        font-size: 0.9rem !important;
+        color: #ccc !important;
+    }
+
+    [data-testid="stMetricValue"] {
+        font-size: 2rem !important;
+        color: #00bfff !important;
+        font-weight: bold;
+    }
+
+    .stPlotlyChart {
+        height: 60vh !important;
+        width: 100% !important;
+    }
+
+    /* Ajustement mobile portrait */
     @media (max-width: 768px) {
-        h1 { font-size: 1.4rem !important; margin-bottom: 0.2em !important; }
-        [data-testid="stMetricValue"] { font-size: 1.6rem !important; }
-        .stPlotlyChart { height: 65vh !important; }
-        .block-container { padding-top: 0.2rem !important; padding-bottom: 0.6rem !important; }
+        h1 {
+            font-size: 1.4rem !important;
+            margin-bottom: 0.2em !important;
+        }
+        [data-testid="stMetricValue"] {
+            font-size: 1.6rem !important;
+        }
+        .stPlotlyChart {
+            height: 65vh !important;
+        }
+        .block-container {
+            padding-top: 0.2rem !important;
+            padding-bottom: 0.5rem !important;
+        }
     }
     </style>
     """,
@@ -121,53 +142,10 @@ data = load_data()
 progress = data.get("progress", 0)
 history = data.get("history", [])
 
-# --- Titre et altitude ---
 st.markdown("<h1>🚀 Fusée vers la tablette — Progression annuelle</h1>", unsafe_allow_html=True)
+
+# --- Altitude actuelle ---
 st.metric(label="Altitude actuelle", value=f"{progress} %")
-
-# --- Graphique de progression (sans légende) ---
-try:
-    if history is None:
-        history = []
-
-    if history:
-        df = pd.DataFrame(history)
-        df["delta"] = df["delta"].astype(int)
-
-        def parse_school_date(date_str):
-            try:
-                d = datetime.datetime.strptime(date_str, "%d/%m %H:%M")
-                today = datetime.datetime.now()
-                school_year = today.year if d.month >= 9 else today.year - 1
-                return d.replace(year=school_year)
-            except Exception:
-                return pd.NaT
-
-        df["time"] = df["time"].apply(parse_school_date)
-        df = df.dropna(subset=["time"]).sort_values("time")
-
-        altitude, total = [], 0
-        for _, row in df.iterrows():
-            total += row["delta"] if row["action"] == "up" else -row["delta"]
-            altitude.append(max(0, total))
-        df["altitude"] = altitude
-
-        today = datetime.datetime.now()
-        start_date = datetime.datetime(today.year if today.month >= 9 else today.year - 1, 9, 1)
-        end_date = datetime.datetime(start_date.year + 1, 6, 30)
-
-        df_full = pd.DataFrame({"date": pd.date_range(start=start_date, end=end_date, freq="D")})
-        df_full = pd.merge_asof(
-            df_full.sort_values("date"),
-            df.sort_values("time").rename(columns={"time": "date"}),
-            on="date",
-            direction="forward"
-        )
-        df_full["altitude"].fillna(method="ffill", inplace=True)
-        df_full["altitude"].fillna(0, inplace=True)
-
-        df_interp = df_full[df_full["date"] <= today]
-        fus_alt = df_interp["altitude"].iloc[-1]
 
 # --- Graphique de progression ---
 try:
@@ -336,11 +314,9 @@ if st.session_state.admin:
     with col2:
         down = st.number_input("⬇️ Diminuer de :", min_value=0, max_value=100, value=0, step=1)
     reason = st.text_input("Motif de la modification :")
-
     if st.button("💾 Enregistrer la modification"):
         now = datetime.datetime.now().strftime("%d/%m %H:%M")
         delta = up - down
-
         if delta != 0:
             progress = max(0, progress + delta)
             history.insert(0, {
@@ -351,12 +327,8 @@ if st.session_state.admin:
             })
             data = {"progress": progress, "history": history}
             save_data(data)
-
-            # Rafraîchir immédiatement les données mises en cache
             st.cache_data.clear()
             st.success("Progression mise à jour ✅")
-
-            # Relancer le script (recharge depuis la Sheet)
             st.rerun()
         else:
             st.info("Aucun changement détecté.")
