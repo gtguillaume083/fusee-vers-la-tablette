@@ -8,62 +8,8 @@ from google.oauth2.service_account import Credentials
 
 # --- Configuration de la page ---
 st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="wide")
-# 🌍 --- Adaptation mobile + message rotation ---
-st.markdown(
-    """
-    <style>
-    /* Texte plus lisible sur petits écrans */
-    @media (max-width: 768px) {
-        h1 {
-            font-size: 1.2rem !important;
-            text-align: center !important;
-        }
-        .stMetric {
-            font-size: 0.9rem !important;
-        }
-    }
 
-    /* Message de rotation */
-    @media screen and (orientation: portrait) and (max-width: 900px) {
-        .rotate-message {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: rgba(0,0,0,0.95);
-            color: white;
-            font-size: 1.4rem;
-            text-align: center;
-            z-index: 9999;
-            padding: 2rem;
-        }
-        body {
-            overflow: hidden; /* bloque le scroll quand le message s’affiche */
-        }
-    }
-
-    @media screen and (orientation: landscape) {
-        .rotate-message {
-            display: none;
-        }
-    }
-    </style>
-
-    <div class="rotate-message">
-        📱<br>
-        <strong>Tourne ton téléphone en mode paysage</strong><br>
-        pour décoller avec la fusée 🚀
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-# 🌑 --- Thème sombre global ---
+# 🌑 --- Thème sombre + version mobile portrait optimisée ---
 st.markdown(
     """
     <style>
@@ -71,79 +17,73 @@ st.markdown(
         background-color: #000 !important;
         color: #fff !important;
     }
-    .stApp {
-        background-color: #000 !important;
-    }
-    .stMarkdown, .stMetric, .stTextInput, .stNumberInput, .stButton, .stExpander {
-        color: #fff !important;
-    }
-    h1 {
-        font-size: 1.6rem !important;
-        color: #ffffff !important;
-        text-align: center;
-        margin-bottom: 0.5em;
-    }
-    h2, h3, h4 {
-        color: #ffffff !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
 
-# 🌑 --- Thème sombre global + adaptation mobile ---
-st.markdown(
-    """
-    <style>
-    body {
-        background-color: #000 !important;
-        color: #fff !important;
-    }
     .stApp {
         background-color: #000 !important;
     }
-    .stMarkdown, .stMetric, .stTextInput, .stNumberInput, .stButton, .stExpander {
-        color: #fff !important;
-    }
+
     h1 {
-        font-size: 1.6rem !important;
-        color: #ffffff !important;
+        font-size: 1.8rem !important;
+        color: #fff !important;
         text-align: center;
+        margin-top: 0.3em;
         margin-bottom: 0.4em;
-    }
-    h2, h3, h4 {
-        color: #ffffff !important;
+        line-height: 1.2;
     }
 
-    /* --- Adaptation mobile --- */
+    h2, h3, h4 {
+        color: #fff !important;
+    }
+
+    .stMetric {
+        text-align: center !important;
+        margin-top: -0.5em !important;
+        margin-bottom: 0.5em !important;
+    }
+
+    [data-testid="stMetricLabel"] {
+        font-size: 0.9rem !important;
+        color: #ccc !important;
+    }
+
+    [data-testid="stMetricValue"] {
+        font-size: 2rem !important;
+        color: #00bfff !important;
+        font-weight: bold;
+    }
+
+    .stPlotlyChart {
+        height: 55vh !important;
+        width: 100% !important;
+    }
+
+    .block-container {
+        padding-top: 0.5rem !important;
+        padding-bottom: 1rem !important;
+        max-width: 95vw !important;
+    }
+
+    /* 📱 Version portrait : design resserré, lisible et centré */
     @media (max-width: 768px) {
         h1 {
-            font-size: 1.2rem !important;
-            margin-bottom: 0.3em !important;
-        }
-        .stMetric {
-            text-align: center !important;
-            font-size: 0.8rem !important;
+            font-size: 1.4rem !important;
             margin-bottom: 0.2em !important;
         }
         [data-testid="stMetricValue"] {
-            font-size: 1.4rem !important;
+            font-size: 1.6rem !important;
         }
         .stPlotlyChart {
-            height: 45vh !important; /* prend moins de hauteur sur mobile */
+            height: 60vh !important;
         }
         .block-container {
-            padding-top: 0.5rem !important;
+            padding-top: 0.2rem !important;
             padding-bottom: 0.5rem !important;
-            padding-left: 0.6rem !important;
-            padding-right: 0.6rem !important;
         }
     }
     </style>
     """,
     unsafe_allow_html=True
 )
-
 
 # --- Connexion Google Sheets ---
 @st.cache_resource
@@ -198,9 +138,8 @@ data = load_data()
 progress = data.get("progress", 0)
 history = data.get("history", [])
 
+# --- Titre et altitude ---
 st.markdown("<h1>🚀 Fusée vers la tablette — Progression annuelle</h1>", unsafe_allow_html=True)
-
-# --- Altitude actuelle ---
 st.metric(label="Altitude actuelle", value=f"{progress} %")
 
 # --- Graphique de progression ---
@@ -299,27 +238,24 @@ try:
             name="Flamme"
         ))
 
-        # Design sombre
+        # Design sombre + compact
         fig.update_layout(
             title="Trajectoire de la fusée",
             xaxis_title="Temps (du 1er septembre au 30 juin)",
             yaxis_title="Altitude (%)",
             yaxis=dict(range=[0, max(130, fus_alt + 10)], color="white"),
             xaxis=dict(color="white"),
-            width=950,
-            height=550,
+            width=None,
+            height=450,
             plot_bgcolor="#000",
             paper_bgcolor="#000",
             font=dict(color="white"),
-            margin=dict(l=50, r=50, t=50, b=50)
+            margin=dict(l=40, r=40, t=40, b=40)
         )
 
         st.plotly_chart(fig, use_container_width=True)
 
-        st.markdown("### 🧭 Altitude actuelle :")
-        st.metric(label="Progression", value=f"{progress} %")
-
-        st.markdown("## 📜 Historique des actions")
+        st.markdown("### 📜 Historique des actions")
         for h in history:
             st.markdown(
                 f"🕓 **{h['time']}** — *{h['action']} de {h['delta']} %* : {h['reason']}"
