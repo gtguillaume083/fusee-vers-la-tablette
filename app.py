@@ -9,21 +9,22 @@ from google.oauth2.service_account import Credentials
 # --- Configuration de la page ---
 st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="wide")
 
-# 🌈 --- Thème sombre + dégradé Terre → Espace ---
+# 🌌 --- Thème sombre + fond dégradé Terre → Espace ---
 st.markdown(
     """
     <style>
-       /* Supprime le bandeau supérieur Streamlit */
-    header[data-testid="stHeader"] { display: none !important; }
-    .block-container { padding-top: 0rem !important; }
+    header[data-testid="stHeader"] {display: none !important;}
+    [data-testid="stToolbar"] {display: none !important;}
+    #MainMenu {visibility: hidden !important;}
+    .viewerBadge_container__1QSob {display: none !important;}
+    .block-container {padding-top: 0rem !important;}
 
-    /* Dégradé : bleu clair (bas) → bleu foncé → noir (haut) */
     .stApp {
         background: linear-gradient(to top, #00bfff 0%, #001848 60%, #000000 100%) !important;
         color: white !important;
     }
 
-    body { color: white !important; }
+    body {color: white !important;}
 
     h1 {
         font-size: 1.8rem !important;
@@ -31,6 +32,7 @@ st.markdown(
         margin-top: 0.3em;
         margin-bottom: 0.4em;
         color: #fff;
+        font-weight: 700;
     }
 
     .stMetric {
@@ -51,56 +53,11 @@ st.markdown(
     }
 
     @media (max-width: 768px) {
-        h1 { font-size: 1.4rem !important; }
-        [data-testid="stMetricValue"] { font-size: 1.6rem !important; }
-        .stPlotlyChart { height: 70vh !important; }
-    }
-
-        /* Cache par recouvrement dynamique du footer Streamlit */
-    footer, .viewerBadge_container__1QSob, #MainMenu { visibility: hidden !important; }
-    [data-testid="stToolbar"] { display: none !important; }
-
-   /* Supprime le menu et la toolbar */
-    footer, #MainMenu, [data-testid="stToolbar"], .viewerBadge_container__1QSob {
-        visibility: hidden !important;
-        height: 0 !important;
-    }
-
-    /* Cache de recouvrement dynamique */
-    .footer-cover {
-        position: fixed !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        width: 100vw !important;
-        height: 80px !important;
-        z-index: 999999 !important;
-        pointer-events: none !important;
-        background: linear-gradient(to top,
-            rgba(0, 0, 0, 0.98) 0%,
-            rgba(0, 0, 0, 0.85) 45%,
-            rgba(0, 0, 0, 0) 100%) !important;
-        animation: floatCover 4s ease-in-out infinite alternate;
-    }
-
-    @keyframes floatCover {
-        0% { opacity: 0.9; }
-        100% { opacity: 1; }
-    }
-
-    @media (max-width: 768px) {
-        .footer-cover {
-            height: 70px !important;
-        }
+        h1 {font-size: 1.4rem !important;}
+        [data-testid="stMetricValue"] {font-size: 1.6rem !important;}
+        .stPlotlyChart {height: 70vh !important;}
     }
     </style>
-    <script>
-    // Force le cache à se placer après chargement complet
-    window.addEventListener('load', function() {
-        const cover = document.createElement('div');
-        cover.className = 'footer-cover';
-        document.body.appendChild(cover);
-    });
-    </script>
     """,
     unsafe_allow_html=True
 )
@@ -113,8 +70,8 @@ def get_client():
         creds_dict,
         scopes=[
             "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ]
+            "https://www.googleapis.com/auth/drive",
+        ],
     )
     return gspread.authorize(creds)
 
@@ -148,7 +105,7 @@ def save_data(data):
         sheet.append_row(["progress", "history"])
         sheet.append_row([
             int(data.get("progress", 0)),
-            json.dumps(data.get("history", []), ensure_ascii=False)
+            json.dumps(data.get("history", []), ensure_ascii=False),
         ])
     except Exception as e:
         st.error(f"❌ Impossible d'enregistrer sur Google Sheets : {e}")
@@ -158,12 +115,13 @@ data = load_data()
 progress = data.get("progress", 0)
 history = data.get("history", [])
 
+# --- Titre ---
 st.markdown("<h1>🚀 Fusée vers la tablette — Progression annuelle</h1>", unsafe_allow_html=True)
 st.metric(label="Altitude actuelle", value=f"{progress} %")
 
 # --- Graphique de progression ---
 try:
-    if history is None:
+    if not history:
         history = []
 
     if history:
@@ -180,8 +138,7 @@ try:
                 return pd.NaT
 
         df["time"] = df["time"].apply(parse_school_date)
-        df = df.dropna(subset=["time"])
-        df = df.sort_values("time")
+        df = df.dropna(subset=["time"]).sort_values("time")
 
         altitude, total = [], 0
         for _, row in df.iterrows():
@@ -215,17 +172,16 @@ try:
             y=df_interp["altitude"],
             mode="lines",
             line=dict(color="deepskyblue", width=4),
-            showlegend=False
+            name="",
         ))
 
         # Ligne de Karman
-        fig.add_hline(y=100, line=dict(color="red", dash="dot", width=2))
+        fig.add_hline(y=100, line=dict(color="red", dash="dot"))
         fig.add_annotation(
-            xref="paper", x=0.5, y=102,
-            text="🌌 Ligne de Karman (100%)",
+            xref="paper", x=0.5, y=105,
+            text="🌌 Ligne de Kármán (100%)",
             showarrow=False,
-            font=dict(size=14, color="red", family="Arial Black"),
-            xanchor="center"
+            font=dict(size=13, color="red"),
         )
 
         # Fusée (sans flamme)
@@ -236,12 +192,16 @@ try:
             text=["🚀"],
             textfont=dict(size=50),
             textposition="middle center",
-            showlegend=False
+            name="",
         ))
 
-        # Design sobre
+        # Nettoyage (supprimer les traces vides)
+        for trace in list(fig.data):
+            if hasattr(trace, "text") and (trace.text is None or trace.text == [None] or trace.text == ["undefined"]):
+                fig.data = tuple(t for t in fig.data if t is not trace)
+
+        # Mise en page finale
         fig.update_layout(
-            title=None,
             xaxis_title=None,
             yaxis_title=None,
             yaxis=dict(range=[0, max(130, fus_alt + 10)], color="white"),
@@ -250,34 +210,25 @@ try:
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
             font=dict(color="white"),
-            margin=dict(l=60, r=30, t=40, b=50)  # ✅ marges élargies
+            margin=dict(l=60, r=30, t=40, b=50),
         )
 
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True,
-            config={
-                "displayModeBar": False,  # 🔧 Supprime toutes les options
-                "staticPlot": True         # 🔒 Graphique figé
-            }
-        )
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
         st.markdown("### 🧭 Altitude actuelle :")
         st.metric(label="Progression", value=f"{progress} %")
 
         st.markdown("## 📜 Historique des actions")
         for h in history:
-            st.markdown(
-                f"🕓 **{h['time']}** — *{h['action']} de {h['delta']} %* : {h['reason']}"
-            )
+            st.markdown(f"🕓 **{h['time']}** — *{h['action']} de {h['delta']} %* : {h['reason']}")
+
     else:
         st.info("Aucune trajectoire à afficher 🚀")
 
 except Exception as e:
     st.error(f"❌ Erreur lors de l'affichage du graphique : {e}")
 
-# --- Mode administrateur ---
+# --- Mode admin ---
 st.markdown("---")
 st.markdown("### 🔐 Panneau de commande (admin)")
 
@@ -315,7 +266,7 @@ if st.session_state.admin:
             data = {"progress": progress, "history": history}
             save_data(data)
 
-            # ✅ Rafraîchir immédiatement les données mises en cache
+            # ✅ Rafraîchir le cache et relancer
             st.cache_data.clear()
             st.success("Progression mise à jour ✅")
             st.rerun()
