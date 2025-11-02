@@ -8,6 +8,60 @@ from google.oauth2.service_account import Credentials
 
 # --- Configuration de la page ---
 st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="wide")
+# 🌍 --- Adaptation mobile + message rotation ---
+st.markdown(
+    """
+    <style>
+    /* Texte plus lisible sur petits écrans */
+    @media (max-width: 768px) {
+        h1 {
+            font-size: 1.2rem !important;
+            text-align: center !important;
+        }
+        .stMetric {
+            font-size: 0.9rem !important;
+        }
+    }
+
+    /* Message de rotation */
+    @media screen and (orientation: portrait) and (max-width: 900px) {
+        .rotate-message {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0,0,0,0.95);
+            color: white;
+            font-size: 1.4rem;
+            text-align: center;
+            z-index: 9999;
+            padding: 2rem;
+        }
+        body {
+            overflow: hidden; /* bloque le scroll quand le message s’affiche */
+        }
+    }
+
+    @media screen and (orientation: landscape) {
+        .rotate-message {
+            display: none;
+        }
+    }
+    </style>
+
+    <div class="rotate-message">
+        📱<br>
+        <strong>Tourne ton téléphone en mode paysage</strong><br>
+        pour décoller avec la fusée 🚀
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 # 🌑 --- Thème sombre global ---
 st.markdown(
