@@ -250,8 +250,9 @@ try:
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
             font=dict(color="white"),
-            margin=dict(l=20, r=20, t=10, b=30)
+            margin=dict(l=60, r=30, t=40, b=50)  # ✅ marges élargies
         )
+
 
         st.plotly_chart(
             fig,
