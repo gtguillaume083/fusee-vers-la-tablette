@@ -9,7 +9,7 @@ from google.oauth2.service_account import Credentials
 # --- Configuration de la page ---
 st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="wide")
 
-# 🌑 --- Thème sombre + dégradé Terre → Espace ---
+# 🌈 --- Thème sombre + dégradé Terre → Espace ---
 st.markdown(
     """
     <style>
@@ -169,17 +169,12 @@ try:
             x=df_interp["date"],
             y=df_interp["altitude"],
             mode="lines",
-            line=dict(color="deepskyblue", width=5),
+            line=dict(color="deepskyblue", width=4),
             showlegend=False
         ))
 
         # Ligne de Karman
-        fig.add_hline(
-            y=100,
-            line=dict(color="red", dash="dot", width=2)
-        )
-
-        # Annotation centrée sur la ligne de Karman
+        fig.add_hline(y=100, line=dict(color="red", dash="dot", width=2))
         fig.add_annotation(
             xref="paper", x=0.5, y=102,
             text="🌌 Ligne de Karman (100%)",
@@ -188,7 +183,7 @@ try:
             xanchor="center"
         )
 
-        # Fusée
+        # Fusée (sans flamme)
         fig.add_trace(go.Scatter(
             x=[df_interp["date"].iloc[-1]],
             y=[fus_alt],
@@ -199,16 +194,39 @@ try:
             showlegend=False
         ))
 
+        # Design sobre
         fig.update_layout(
+            title=None,
+            xaxis_title=None,
+            yaxis_title=None,
             yaxis=dict(range=[0, max(130, fus_alt + 10)], color="white"),
             xaxis=dict(color="white"),
+            showlegend=False,
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=20, r=20, t=10, b=30),
-            height=450
+            font=dict(color="white"),
+            margin=dict(l=20, r=20, t=10, b=30)
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            config={
+                "displayModeBar": False,  # 🔧 Supprime toutes les options
+                "staticPlot": True         # 🔒 Graphique figé
+            }
+        )
+
+        st.markdown("### 🧭 Altitude actuelle :")
+        st.metric(label="Progression", value=f"{progress} %")
+
+        st.markdown("## 📜 Historique des actions")
+        for h in history:
+            st.markdown(
+                f"🕓 **{h['time']}** — *{h['action']} de {h['delta']} %* : {h['reason']}"
+            )
+    else:
+        st.info("Aucune trajectoire à afficher 🚀")
 
 except Exception as e:
     st.error(f"❌ Erreur lors de l'affichage du graphique : {e}")
@@ -250,6 +268,8 @@ if st.session_state.admin:
             })
             data = {"progress": progress, "history": history}
             save_data(data)
+
+            # ✅ Rafraîchir immédiatement les données mises en cache
             st.cache_data.clear()
             st.success("Progression mise à jour ✅")
             st.rerun()
