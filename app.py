@@ -247,19 +247,24 @@ if st.session_state.admin:
         down = st.number_input("⬇️ Diminuer de :", min_value=0, max_value=100, value=0, step=1)
     reason = st.text_input("Motif de la modification :")
     if st.button("💾 Enregistrer la modification"):
-        now = datetime.datetime.now().strftime("%d/%m %H:%M")
-        delta = up - down
-        if delta != 0:
-            progress = max(0, progress + delta)
-            history.insert(0, {
-                "time": now,
-                "action": "up" if delta > 0 else "down",
-                "delta": abs(delta),
-                "reason": reason if reason else "(non précisé)"
-            })
-            data = {"progress": progress, "history": history}
-            save_data(data)
-            st.success("Progression mise à jour ✅")
-            st.rerun()
-        else:
-            st.info("Aucun changement détecté.")
+    now = datetime.datetime.now().strftime("%d/%m %H:%M")
+    delta = up - down
+    if delta != 0:
+        progress = max(0, progress + delta)
+        history.insert(0, {
+            "time": now,
+            "action": "up" if delta > 0 else "down",
+            "delta": abs(delta),
+            "reason": reason if reason else "(non précisé)"
+        })
+        data = {"progress": progress, "history": history}
+        save_data(data)
+
+        # ✅ Rafraîchir immédiatement les données mises en cache
+        st.cache_data.clear()
+        st.success("Progression mise à jour ✅")
+
+        # ✅ Relancer le script (recharge depuis la Sheet)
+        st.rerun()
+    else:
+        st.info("Aucun changement détecté.")
