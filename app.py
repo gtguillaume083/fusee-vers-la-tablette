@@ -169,92 +169,139 @@ try:
         df_interp = df_full[df_full["date"] <= today]
         fus_alt = df_interp["altitude"].iloc[-1]
 
- # --- Graphique ---
-fig = go.Figure()
+# --- Graphique de progression ---
+try:
+    if history is None:
+        history = []
 
-# Dégradé atmosphère (bleu clair → bleu foncé → noir)
-fig.add_shape(
-    type="rect",
-    xref="paper", x0=0, x1=1,
-    yref="y", y0=0, y1=100,
-    fillcolor="rgba(0,191,255,0.15)",  # bleu clair en bas
-    layer="below",
-    line=dict(width=0)
-)
-fig.add_shape(
-    type="rect",
-    xref="paper", x0=0, x1=1,
-    yref="y", y0=50, y1=100,
-    fillcolor="rgba(0,0,80,0.6)",  # bleu profond vers la ligne de Karman
-    layer="below",
-    line=dict(width=0)
-)
+    if history:
+        df = pd.DataFrame(history)
+        df["delta"] = df["delta"].astype(int)
 
-# Espace (au-delà de 100%)
-fig.add_shape(
-    type="rect",
-    xref="paper", x0=0, x1=1,
-    yref="y", y0=100, y1=130,
-    fillcolor="rgba(0,0,0,1)",  # noir total
-    layer="below",
-    line=dict(width=0)
-)
+        def parse_school_date(date_str):
+            try:
+                d = datetime.datetime.strptime(date_str, "%d/%m %H:%M")
+                today = datetime.datetime.now()
+                school_year = today.year if d.month >= 9 else today.year - 1
+                return d.replace(year=school_year)
+            except Exception:
+                return pd.NaT
 
-# Ligne de progression
-fig.add_trace(go.Scatter(
-    x=df_interp["date"],
-    y=df_interp["altitude"],
-    mode="lines",
-    line=dict(color="deepskyblue", width=4),
-    showlegend=False
-))
+        df["time"] = df["time"].apply(parse_school_date)
+        df = df.dropna(subset=["time"])
+        df = df.sort_values("time")
 
-# Ligne de Karman
-fig.add_hline(
-    y=100,
-    line=dict(color="red", dash="dot", width=2)
-)
+        altitude, total = [], 0
+        for _, row in df.iterrows():
+            total += row["delta"] if row["action"] == "up" else -row["delta"]
+            altitude.append(max(0, total))
+        df["altitude"] = altitude
 
-# Annotation centrée sur la ligne de Karman
-fig.add_annotation(
-    xref="paper", x=0.5, y=102,  # position au centre horizontal
-    text="🌌 Ligne de Karman (100%)",
-    showarrow=False,
-    font=dict(size=14, color="red", family="Arial Black"),
-    xanchor="center"
-)
+        today = datetime.datetime.now()
+        start_date = datetime.datetime(today.year if today.month >= 9 else today.year - 1, 9, 1)
+        end_date = datetime.datetime(start_date.year + 1, 6, 30)
 
-# Fusée (sans flamme)
-fig.add_trace(go.Scatter(
-    x=[df_interp["date"].iloc[-1]],
-    y=[fus_alt],
-    mode="text",
-    text=["🚀"],
-    textfont=dict(size=50),
-    textposition="middle center",
-    showlegend=False
-))
+        df_full = pd.DataFrame({"date": pd.date_range(start=start_date, end=end_date, freq="D")})
+        df_full = pd.merge_asof(
+            df_full.sort_values("date"),
+            df.sort_values("time").rename(columns={"time": "date"}),
+            on="date",
+            direction="forward"
+        )
+        df_full["altitude"].fillna(method="ffill", inplace=True)
+        df_full["altitude"].fillna(0, inplace=True)
 
-# Design sombre et épuré
-fig.update_layout(
-    title=None,
-    xaxis_title=None,
-    yaxis_title=None,
-    yaxis=dict(range=[0, max(130, fus_alt + 10)], color="white"),
-    xaxis=dict(color="white"),
-    width=None,
-    height=450,
-    showlegend=False,
-    plot_bgcolor="rgba(0,0,0,0)",
-    paper_bgcolor="#000",
-    font=dict(color="white"),
-    margin=dict(l=20, r=20, t=10, b=30)
-)
+        df_interp = df_full[df_full["date"] <= today]
+        fus_alt = df_interp["altitude"].iloc[-1]
 
+        # --- Graphique ---
+        fig = go.Figure()
+
+        # Dégradé atmosphère (bleu clair → bleu foncé → noir)
+        fig.add_shape(
+            type="rect",
+            xref="paper", x0=0, x1=1,
+            yref="y", y0=0, y1=100,
+            fillcolor="rgba(0,191,255,0.15)",
+            layer="below",
+            line=dict(width=0)
+        )
+        fig.add_shape(
+            type="rect",
+            xref="paper", x0=0, x1=1,
+            yref="y", y0=50, y1=100,
+            fillcolor="rgba(0,0,80,0.6)",
+            layer="below",
+            line=dict(width=0)
+        )
+
+        # Espace (au-delà de 100%)
+        fig.add_shape(
+            type="rect",
+            xref="paper", x0=0, x1=1,
+            yref="y", y0=100, y1=130,
+            fillcolor="rgba(0,0,0,1)",
+            layer="below",
+            line=dict(width=0)
+        )
+
+        # Ligne de progression
+        fig.add_trace(go.Scatter(
+            x=df_interp["date"],
+            y=df_interp["altitude"],
+            mode="lines",
+            line=dict(color="deepskyblue", width=4),
+            showlegend=False
+        ))
+
+        # Ligne de Karman
+        fig.add_hline(
+            y=100,
+            line=dict(color="red", dash="dot", width=2)
+        )
+
+        # Annotation centrée sur la ligne de Karman
+        fig.add_annotation(
+            xref="paper", x=0.5, y=102,
+            text="🌌 Ligne de Karman (100%)",
+            showarrow=False,
+            font=dict(size=14, color="red", family="Arial Black"),
+            xanchor="center"
+        )
+
+        # Fusée (sans flamme)
+        fig.add_trace(go.Scatter(
+            x=[df_interp["date"].iloc[-1]],
+            y=[fus_alt],
+            mode="text",
+            text=["🚀"],
+            textfont=dict(size=50),
+            textposition="middle center",
+            showlegend=False
+        ))
+
+        # Design sombre et épuré
+        fig.update_layout(
+            title=None,
+            xaxis_title=None,
+            yaxis_title=None,
+            yaxis=dict(range=[0, max(130, fus_alt + 10)], color="white"),
+            xaxis=dict(color="white"),
+            width=None,
+            height=450,
+            showlegend=False,
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="#000",
+            font=dict(color="white"),
+            margin=dict(l=20, r=20, t=10, b=30)
+        )
 
         st.plotly_chart(fig, use_container_width=True)
 
-        st.markdown("### 📜 Historique des actions")
+        st.markdown("### 🧭 Altitude actuelle :")
+        st.metric(label="Progression", value=f"{progress} %")
+
+        st.markdown("## 📜 Historique des actions")
         for h in history:
             st.markdown(
                 f"🕓 **{h['time']}** — *{h['action']} de {h['delta']} %* : {h['reason']}"
