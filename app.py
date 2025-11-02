@@ -13,12 +13,14 @@ st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="wide")
 st.markdown(
     """
     <style>
-   /* Supprime le bandeau supérieur Streamlit */
+       /* Supprime le bandeau supérieur Streamlit */
     header[data-testid="stHeader"] { display: none !important; }
     .block-container { padding-top: 0rem !important; }
 
-    /* Supprime la barre de bas de page Streamlit */
-    footer { visibility: hidden !important; }
+    /* Supprime toutes les barres de bas de page, badges et toolbars */
+    footer { visibility: hidden !important; height: 0px !important; }
+    #MainMenu { visibility: hidden !important; }
+    .viewerBadge_container__1QSob { display: none !important; }
     [data-testid="stToolbar"] { display: none !important; }
 
     /* Dégradé : bleu clair (bas) → bleu foncé → noir (haut) */
