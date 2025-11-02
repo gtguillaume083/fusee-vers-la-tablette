@@ -91,6 +91,60 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# 🌑 --- Thème sombre global + adaptation mobile ---
+st.markdown(
+    """
+    <style>
+    body {
+        background-color: #000 !important;
+        color: #fff !important;
+    }
+    .stApp {
+        background-color: #000 !important;
+    }
+    .stMarkdown, .stMetric, .stTextInput, .stNumberInput, .stButton, .stExpander {
+        color: #fff !important;
+    }
+    h1 {
+        font-size: 1.6rem !important;
+        color: #ffffff !important;
+        text-align: center;
+        margin-bottom: 0.4em;
+    }
+    h2, h3, h4 {
+        color: #ffffff !important;
+    }
+
+    /* --- Adaptation mobile --- */
+    @media (max-width: 768px) {
+        h1 {
+            font-size: 1.2rem !important;
+            margin-bottom: 0.3em !important;
+        }
+        .stMetric {
+            text-align: center !important;
+            font-size: 0.8rem !important;
+            margin-bottom: 0.2em !important;
+        }
+        [data-testid="stMetricValue"] {
+            font-size: 1.4rem !important;
+        }
+        .stPlotlyChart {
+            height: 45vh !important; /* prend moins de hauteur sur mobile */
+        }
+        .block-container {
+            padding-top: 0.5rem !important;
+            padding-bottom: 0.5rem !important;
+            padding-left: 0.6rem !important;
+            padding-right: 0.6rem !important;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
 # --- Connexion Google Sheets ---
 @st.cache_resource
 def get_client():
