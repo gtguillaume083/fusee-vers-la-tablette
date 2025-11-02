@@ -9,7 +9,7 @@ from google.oauth2.service_account import Credentials
 # --- Configuration de la page ---
 st.set_page_config(page_title="🚀 Fusée vers la tablette", layout="wide")
 
-# 🌌 --- Thème sombre + fond dégradé Terre → Espace ---
+# 🌑 --- Thème sombre global + fond dégradé Terre → Espace ---
 st.markdown(
     """
     <style>
@@ -70,8 +70,8 @@ def get_client():
         creds_dict,
         scopes=[
             "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive",
-        ],
+            "https://www.googleapis.com/auth/drive"
+        ]
     )
     return gspread.authorize(creds)
 
@@ -105,7 +105,7 @@ def save_data(data):
         sheet.append_row(["progress", "history"])
         sheet.append_row([
             int(data.get("progress", 0)),
-            json.dumps(data.get("history", []), ensure_ascii=False),
+            json.dumps(data.get("history", []), ensure_ascii=False)
         ])
     except Exception as e:
         st.error(f"❌ Impossible d'enregistrer sur Google Sheets : {e}")
@@ -115,13 +115,12 @@ data = load_data()
 progress = data.get("progress", 0)
 history = data.get("history", [])
 
-# --- Titre ---
 st.markdown("<h1>🚀 Fusée vers la tablette — Progression annuelle</h1>", unsafe_allow_html=True)
 st.metric(label="Altitude actuelle", value=f"{progress} %")
 
-# --- Graphique de progression ---
+# --- Graphique ---
 try:
-    if not history:
+    if history is None:
         history = []
 
     if history:
@@ -138,7 +137,8 @@ try:
                 return pd.NaT
 
         df["time"] = df["time"].apply(parse_school_date)
-        df = df.dropna(subset=["time"]).sort_values("time")
+        df = df.dropna(subset=["time"])
+        df = df.sort_values("time")
 
         altitude, total = [], 0
         for _, row in df.iterrows():
@@ -163,28 +163,36 @@ try:
         df_interp = df_full[df_full["date"] <= today]
         fus_alt = df_interp["altitude"].iloc[-1]
 
-        # --- Graphique ---
         fig = go.Figure()
 
-        # Ligne de progression
+        # --- Dégradé bleu Terre → Espace
+        fig.add_shape(
+            type="rect",
+            xref="paper", x0=0, x1=1,
+            yref="y", y0=0, y1=100,
+            fillcolor="rgba(0,191,255,0.3)",
+            layer="below", line=dict(width=0)
+        )
+
+        # --- Ligne de progression
         fig.add_trace(go.Scatter(
             x=df_interp["date"],
             y=df_interp["altitude"],
             mode="lines",
             line=dict(color="deepskyblue", width=4),
-            name="",
+            name=""
         ))
 
-        # Ligne de Karman
+        # --- Ligne de Kármán
         fig.add_hline(y=100, line=dict(color="red", dash="dot"))
         fig.add_annotation(
             xref="paper", x=0.5, y=105,
             text="🌌 Ligne de Kármán (100%)",
             showarrow=False,
-            font=dict(size=13, color="red"),
+            font=dict(size=13, color="red")
         )
 
-        # Fusée (sans flamme)
+        # --- Fusée
         fig.add_trace(go.Scatter(
             x=[df_interp["date"].iloc[-1]],
             y=[fus_alt],
@@ -192,15 +200,10 @@ try:
             text=["🚀"],
             textfont=dict(size=50),
             textposition="middle center",
-            name="",
+            name=""
         ))
 
-        # Nettoyage (supprimer les traces vides)
-        for trace in list(fig.data):
-            if hasattr(trace, "text") and (trace.text is None or trace.text == [None] or trace.text == ["undefined"]):
-                fig.data = tuple(t for t in fig.data if t is not trace)
-
-        # Mise en page finale
+        # --- Mise en page ---
         fig.update_layout(
             xaxis_title=None,
             yaxis_title=None,
@@ -210,7 +213,7 @@ try:
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
             font=dict(color="white"),
-            margin=dict(l=60, r=30, t=40, b=50),
+            margin=dict(l=50, r=30, t=40, b=40)
         )
 
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
@@ -220,15 +223,16 @@ try:
 
         st.markdown("## 📜 Historique des actions")
         for h in history:
-            st.markdown(f"🕓 **{h['time']}** — *{h['action']} de {h['delta']} %* : {h['reason']}")
-
+            st.markdown(
+                f"🕓 **{h['time']}** — *{h['action']} de {h['delta']} %* : {h['reason']}"
+            )
     else:
         st.info("Aucune trajectoire à afficher 🚀")
 
 except Exception as e:
     st.error(f"❌ Erreur lors de l'affichage du graphique : {e}")
 
-# --- Mode admin ---
+# --- Mode administrateur ---
 st.markdown("---")
 st.markdown("### 🔐 Panneau de commande (admin)")
 
@@ -265,8 +269,6 @@ if st.session_state.admin:
             })
             data = {"progress": progress, "history": history}
             save_data(data)
-
-            # ✅ Rafraîchir le cache et relancer
             st.cache_data.clear()
             st.success("Progression mise à jour ✅")
             st.rerun()
