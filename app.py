@@ -222,7 +222,7 @@ try:
 except Exception as e:
     st.error(f"❌ Erreur lors de l'affichage du graphique : {e}")
 
-# --- Mode administrateur (déplacé en bas) ---
+# --- Mode administrateur ---
 st.markdown("---")
 st.markdown("### 🔐 Panneau de commande (admin)")
 
@@ -246,25 +246,27 @@ if st.session_state.admin:
     with col2:
         down = st.number_input("⬇️ Diminuer de :", min_value=0, max_value=100, value=0, step=1)
     reason = st.text_input("Motif de la modification :")
+
     if st.button("💾 Enregistrer la modification"):
-    now = datetime.datetime.now().strftime("%d/%m %H:%M")
-    delta = up - down
-    if delta != 0:
-        progress = max(0, progress + delta)
-        history.insert(0, {
-            "time": now,
-            "action": "up" if delta > 0 else "down",
-            "delta": abs(delta),
-            "reason": reason if reason else "(non précisé)"
-        })
-        data = {"progress": progress, "history": history}
-        save_data(data)
+        now = datetime.datetime.now().strftime("%d/%m %H:%M")
+        delta = up - down
 
-        # ✅ Rafraîchir immédiatement les données mises en cache
-        st.cache_data.clear()
-        st.success("Progression mise à jour ✅")
+        if delta != 0:
+            progress = max(0, progress + delta)
+            history.insert(0, {
+                "time": now,
+                "action": "up" if delta > 0 else "down",
+                "delta": abs(delta),
+                "reason": reason if reason else "(non précisé)"
+            })
+            data = {"progress": progress, "history": history}
+            save_data(data)
 
-        # ✅ Relancer le script (recharge depuis la Sheet)
-        st.rerun()
-    else:
-        st.info("Aucun changement détecté.")
+            # ✅ Rafraîchir immédiatement les données mises en cache
+            st.cache_data.clear()
+            st.success("Progression mise à jour ✅")
+
+            # ✅ Relancer le script (recharge depuis la Sheet)
+            st.rerun()
+        else:
+            st.info("Aucun changement détecté.")
