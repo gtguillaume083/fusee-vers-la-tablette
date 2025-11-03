@@ -19,6 +19,17 @@ st.markdown(
     .viewerBadge_container__1QSob {display: none !important;}
     .block-container {padding-top: 0rem !important;}
 
+    @media (orientation: landscape) and (max-width: 900px) {
+    .stPlotlyChart {
+        height: 80vh !important; /* le graphique occupe quasiment tout l’écran */
+    }
+    [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
+        font-size: 1.4rem !important;
+        text-align: center !important;
+    }
+}
+
+
     .stApp {
         background: linear-gradient(to top, #00bfff 0%, #001848 60%, #000000 100%) !important;
         color: white !important;
