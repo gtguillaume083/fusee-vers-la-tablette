@@ -208,13 +208,17 @@ try:
             xaxis_title=None,
             yaxis_title=None,
             yaxis=dict(range=[0, max(130, fus_alt + 10)], color="white"),
-            xaxis=dict(color="white"),
+            xaxis=dict(
+                range=[start_date, end_date],  # 👈 étend l’affichage jusqu’à fin juin
+                color="white"
+            ),
             showlegend=False,
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
             font=dict(color="white"),
             margin=dict(l=50, r=30, t=40, b=40)
         )
+
 
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
