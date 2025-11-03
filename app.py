@@ -48,9 +48,11 @@ st.markdown(
     }
 
     .stPlotlyChart {
-        height: 65vh !important;
-        width: 100% !important;
+    height: 70vh !important;
+    width: 100% !important;
+    margin-bottom: 2rem !important; /* 👈 espace entre graphique et texte */
     }
+
 
     @media (max-width: 768px) {
         h1 {font-size: 1.4rem !important;}
@@ -219,8 +221,11 @@ try:
             margin=dict(l=50, r=30, t=40, b=40)
         )
 
+        st.markdown("<div style='margin-bottom:1rem;'></div>", unsafe_allow_html=True)
 
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+        st.markdown("---")
 
         st.markdown("### 🧭 Altitude actuelle :")
         st.metric(label="Progression", value=f"{progress} %")
