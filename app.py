@@ -170,8 +170,12 @@ try:
             on="date",
             direction="forward"
         )
-        df_full["altitude"].fillna(method="ffill", inplace=True)
-        df_full["altitude"].fillna(0, inplace=True)
+        df_full["altitude"] = (
+            df_full["altitude"]
+            .ffill()
+            .fillna(0)
+        )
+
 
         df_interp = df_full[df_full["date"] <= today]
         fus_alt = df_interp["altitude"].iloc[-1]
